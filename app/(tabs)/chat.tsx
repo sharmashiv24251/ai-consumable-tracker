@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { Upload, Send, Sparkles } from 'lucide-react-native';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
+import type { CoreMessage } from 'ai';
 
 const QUICK_PROMPTS = ['Is this healthy?', 'Is this eco-friendly?', 'Suggest a better option'];
 
@@ -24,6 +25,8 @@ type Message = {
   role: 'user' | 'assistant';
   text?: string;
   imageUri?: string | null;
+  // Track if this message originally had an image (for context building)
+  hadImage?: boolean;
 };
 
 export default function ChatScreen() {
@@ -75,45 +78,118 @@ export default function ChatScreen() {
     setInput(prompt);
   };
 
+  /**
+   * Build optimized conversation history for the AI model
+   * - Only include image data in the FIRST message where it was uploaded
+   * - For subsequent messages, reference "the image from earlier" via text context
+   * - Keep last N messages to avoid token limit issues
+   */
+  const buildConversationHistory = (
+    currentMessages: Message[],
+    newUserText: string,
+    newImageData?: string | null
+  ): CoreMessage[] => {
+    const MAX_HISTORY = 10; // Keep last 10 messages for context
+    const recentMessages = currentMessages.slice(-MAX_HISTORY);
+
+    const history: CoreMessage[] = recentMessages.map((msg) => {
+      if (msg.role === 'user') {
+        const content: Array<any> = [];
+
+        // Add text content
+        if (msg.text) {
+          content.push({ type: 'text', text: msg.text });
+        }
+
+        // Only include image if this message originally had it
+        // This prevents re-sending images in every request
+        if (msg.imageUri && msg.hadImage) {
+          content.push({ type: 'image', image: msg.imageUri });
+        }
+
+        return { role: 'user', content };
+      } else {
+        // Assistant message
+        return {
+          role: 'assistant',
+          content: msg.text || '',
+        };
+      }
+    });
+
+    // Add the new user message
+    const newContent: Array<any> = [];
+
+    // Check if there's an image in conversation history
+    const hasImageInHistory = recentMessages.some((m) => m.hadImage && m.imageUri);
+
+    // Build context-aware text
+    let contextualText = newUserText;
+    if (!newImageData && hasImageInHistory && newUserText) {
+      // User is asking a follow-up about a previous image
+      contextualText = `Referring to the image from earlier in our conversation: ${newUserText}`;
+    }
+
+    if (contextualText) {
+      newContent.push({ type: 'text', text: contextualText });
+    }
+
+    // Add new image if provided
+    if (newImageData) {
+      newContent.push({ type: 'image', image: newImageData });
+    }
+
+    history.push({
+      role: 'user',
+      content: newContent,
+    });
+
+    return history;
+  };
+
   async function callModel(userText: string, imageData?: string | null) {
     setLoading(true);
     setError(null);
+
     // Add user message to UI immediately
     const userId = Date.now().toString();
-    appendMessage({ id: `u-${userId}`, role: 'user', text: userText, imageUri: imageData ?? null });
+    const userMessage: Message = {
+      id: `u-${userId}`,
+      role: 'user',
+      text: userText || (imageData ? 'Analyze this product' : ''),
+      imageUri: imageData ?? null,
+      hadImage: !!imageData, // Track if this message originally had an image
+    };
+    appendMessage(userMessage);
 
     try {
       if (Platform.OS !== 'web') {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
 
-      // Build the same "messages" structure you used in ScanScreen
       const google = createGoogleGenerativeAI({
         apiKey: process.env.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY,
       });
 
       const model = google('gemini-2.0-flash-exp');
 
-      const userContent: Array<any> = [{ type: 'text', text: userText }];
-      if (imageData) {
-        userContent.push({ type: 'image', image: imageData });
-      }
+      // Build optimized conversation history
+      // Pass current messages BEFORE adding the new one, along with new message data
+      const conversationHistory = buildConversationHistory(
+        messages, // Use messages state (before new user message)
+        userText || (imageData ? 'Analyze this product' : ''),
+        imageData
+      );
 
       const { text: assistantText } = await generateText({
         model,
-        messages: [
-          {
-            role: 'user',
-            content: userContent,
-          },
-        ],
+        messages: conversationHistory,
       });
 
-      // In many cases the model returns text possibly mixed with JSON; keep it simple and show text.
       appendMessage({
         id: `a-${Date.now().toString()}`,
         role: 'assistant',
-        text: assistantText?.trim() ?? 'Sorry — no response received.',
+        text: assistantText?.trim() || 'Sorry — no response received.',
       });
 
       if (Platform.OS !== 'web') {
@@ -138,14 +214,14 @@ export default function ChatScreen() {
   }
 
   const handleSend = async () => {
+    // Allow sending with just text OR just image OR both
     if (!input.trim() && !selectedImage) return;
-    await callModel(input.trim() || 'Analyze this product', selectedImage);
+    await callModel(input.trim(), selectedImage);
   };
 
   return (
     <View className="flex-1">
       <View className="absolute inset-0">
-        {/* simple background gradient substitute to avoid extra deps */}
         <View style={{ flex: 1, backgroundColor: '#F8FFFA' }} />
       </View>
 
@@ -188,7 +264,7 @@ export default function ChatScreen() {
               key={m.id}
               style={{ marginVertical: 6, maxWidth: '90%' }}
               className={m.role === 'user' ? 'items-end self-end' : 'self-start'}>
-              {m.imageUri ? (
+              {m.imageUri && m.hadImage ? (
                 <Image
                   source={{ uri: m.imageUri }}
                   style={{
@@ -232,7 +308,7 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        {/* Quick prompts */}
+        {/* Quick prompts - only show when no messages */}
         {messages.length === 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
             {QUICK_PROMPTS.map((p) => (
