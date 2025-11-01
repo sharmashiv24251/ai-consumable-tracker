@@ -1,70 +1,55 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
-import { Send, Sparkles, Upload } from 'lucide-react-native';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
   Animated,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { z } from 'zod';
-
-/**
- * TODO: replace this with process.env usage later.
- * Paste your Vercel AI Gateway API key here for now.
- */
-const API_KEY = 'AIzaSyCYo2oYyrUpeaDuD0qAN0WT7c8zX7MEWHM';
-const MODEL_ID = 'google/gemini-2.5-flash';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
+import { Upload, Send, Sparkles } from 'lucide-react-native';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { generateText } from 'ai';
 
 const QUICK_PROMPTS = ['Is this healthy?', 'Is this eco-friendly?', 'Suggest a better option'];
 
-type MessagePart =
-  | { type: 'text'; text: string }
-  | { type: 'tool'; toolName: string; state: string; output?: any; errorText?: string };
-
-type ChatMessage = {
+type Message = {
   id: string;
-  role: 'user' | 'assistant' | 'system';
-  parts: MessagePart[];
-  createdAt: number;
+  role: 'user' | 'assistant';
+  text?: string;
+  imageUri?: string | null;
 };
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
   }, [pulseAnim]);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  }, [messages, loading]);
+
+  const appendMessage = (msg: Message) => setMessages((m) => [...m, msg]);
 
   const pickImage = async () => {
     try {
@@ -74,421 +59,277 @@ export default function ChatScreen() {
         quality: 0.8,
         base64: true,
       });
-
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         const base64Image = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
         setSelectedImage(base64Image);
       }
-    } catch (error) {
-      console.error('Failed to pick image:', error);
+    } catch (err) {
+      console.error('pickImage error', err);
+      setError('Failed to pick image');
+      setTimeout(() => setError(null), 3000);
     }
-  };
-
-  async function sendMessage(messageBody: { text?: string; imageDataUri?: string }) {
-    // Add user message locally
-    const userMsg: ChatMessage = {
-      id: Math.random().toString(),
-      role: 'user',
-      createdAt: Date.now(),
-      parts: [
-        {
-          type: 'text',
-          text: messageBody.imageDataUri
-            ? `${messageBody.text || 'Analyze this product'}\n\n[IMAGE ATTACHED]`
-            : messageBody.text || '',
-        },
-      ],
-    };
-    setMessages((m) => [...m, userMsg]);
-
-    // Create assistant placeholder
-    const assistantId = Math.random().toString();
-    const assistantPlaceholder: ChatMessage = {
-      id: assistantId,
-      role: 'assistant',
-      createdAt: Date.now(),
-      parts: [{ type: 'tool', toolName: 'vercel_ai', state: 'input-streaming' }],
-    };
-    setMessages((m) => [...m, assistantPlaceholder]);
-    setIsProcessing(true);
-
-    try {
-      const messagesForApi = buildMessagesForApi([...messages, userMsg]);
-
-      // If there is an image, append it as plain text (data URI).
-      if (messageBody.imageDataUri) {
-        messagesForApi.push({
-          role: 'user',
-          content: [
-            { type: 'text', text: messageBody.text || 'Please analyze this product image.' },
-            {
-              type: 'text',
-              text: `IMAGE_DATA_URI:\n${messageBody.imageDataUri.substring(0, 300)}...[truncated]`,
-            },
-          ],
-        });
-      }
-
-      // Prepare request body for Vercel AI Gateway (OpenAI-compatible chat completions)
-      const reqBody = {
-        model: MODEL_ID,
-        messages: messagesForApi.map((m) => {
-          // Flatten content array to string for compatibility
-          const contents = Array.isArray(m.content)
-            ? m.content.map((c: any) => (c.type === 'text' ? c.text : '')).join('\n')
-            : (m.content?.text ?? '');
-          return {
-            role: m.role,
-            content: contents,
-          };
-        }),
-        stream: false, // non-streaming for simplicity. Can change to true + SSE handling later.
-      };
-
-      const res = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
-        },
-        body: JSON.stringify(reqBody),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Vercel AI error: ${res.status} ${text}`);
-      }
-
-      const json = await res.json();
-
-      // The OpenAI-compatible response shape: choices[0].message.content
-      const assistantText =
-        json?.choices?.[0]?.message?.content ??
-        json?.choices?.[0]?.message ??
-        json?.choices?.[0]?.text ??
-        JSON.stringify(json);
-
-      // Replace assistant placeholder with actual response
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== assistantId) return msg;
-          // Try to parse JSON embedded inside assistant text (to support structured suggestions)
-          const parsedTool = tryExtractJSON(assistantText);
-          if (parsedTool && parsedTool.productName) {
-            return {
-              ...msg,
-              parts: [
-                {
-                  type: 'tool',
-                  toolName: 'suggestProduct',
-                  state: 'output-available',
-                  output: parsedTool,
-                } as MessagePart,
-              ],
-            };
-          }
-
-          // fallback: plain assistant text
-          return {
-            ...msg,
-            parts: [{ type: 'text', text: String(assistantText) }],
-          };
-        })
-      );
-    } catch (err: any) {
-      console.error('AI call failed:', err);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantId
-            ? {
-                ...msg,
-                parts: [
-                  {
-                    type: 'tool',
-                    toolName: 'vercel_ai',
-                    state: 'output-error',
-                    errorText: err?.message ?? 'Unknown error',
-                  } as MessagePart,
-                ],
-              }
-            : msg
-        )
-      );
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  const handleSend = async () => {
-    if (!input.trim() && !selectedImage) return;
-
-    if (Platform.OS !== 'web') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-
-    const textToSend = input.trim() || undefined;
-    const imageToSend = selectedImage || undefined;
-
-    setInput('');
-    setSelectedImage(null);
-
-    await sendMessage({ text: textToSend, imageDataUri: imageToSend });
   };
 
   const handleQuickPrompt = (prompt: string) => {
     setInput(prompt);
   };
 
-  const isProcessingLocal =
-    isProcessing ||
-    messages.some((m) =>
-      m.parts.some((p) => p.type === 'tool' && (p as any).state === 'input-streaming')
-    );
+  async function callModel(userText: string, imageData?: string | null) {
+    setLoading(true);
+    setError(null);
+    // Add user message to UI immediately
+    const userId = Date.now().toString();
+    appendMessage({ id: `u-${userId}`, role: 'user', text: userText, imageUri: imageData ?? null });
+
+    try {
+      if (Platform.OS !== 'web') {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      // Build the same "messages" structure you used in ScanScreen
+      const google = createGoogleGenerativeAI({
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY,
+      });
+
+      const model = google('gemini-2.0-flash-exp');
+
+      const userContent: Array<any> = [{ type: 'text', text: userText }];
+      if (imageData) {
+        userContent.push({ type: 'image', image: imageData });
+      }
+
+      const { text: assistantText } = await generateText({
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: userContent,
+          },
+        ],
+      });
+
+      // In many cases the model returns text possibly mixed with JSON; keep it simple and show text.
+      appendMessage({
+        id: `a-${Date.now().toString()}`,
+        role: 'assistant',
+        text: assistantText?.trim() ?? 'Sorry — no response received.',
+      });
+
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err: any) {
+      console.error('Model call failed', err);
+      setError(err?.message || 'Failed to get response from AI');
+      appendMessage({
+        id: `a-${Date.now().toString()}`,
+        role: 'assistant',
+        text: 'Sorry, something went wrong while analyzing that. Try again.',
+      });
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } finally {
+      setLoading(false);
+      setInput('');
+      setSelectedImage(null);
+    }
+  }
+
+  const handleSend = async () => {
+    if (!input.trim() && !selectedImage) return;
+    await callModel(input.trim() || 'Analyze this product', selectedImage);
+  };
 
   return (
-    <View className="flex-1 bg-transparent">
-      <LinearGradient colors={['#F0FDF4', '#FAFAFA']} className="absolute inset-0" />
+    <View className="flex-1">
+      <View className="absolute inset-0">
+        {/* simple background gradient substitute to avoid extra deps */}
+        <View style={{ flex: 1, backgroundColor: '#F8FFFA' }} />
+      </View>
 
       <KeyboardAvoidingView
-        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
         style={{ flex: 1 }}>
-        <View className="items-center gap-y-3 px-5 pb-5" style={{ paddingTop: insets.top + 16 }}>
+        <View className="items-center gap-3 px-5 pb-5" style={{ paddingTop: insets.top + 16 }}>
           <Animated.View
-            className="h-20 w-20 items-center justify-center rounded-full bg-[#E8F5E9]"
+            className="h-20 w-20 items-center justify-center rounded-full bg-green-50"
             style={{ transform: [{ scale: pulseAnim }] }}>
             <Sparkles size={32} color="#34C759" />
           </Animated.View>
-          <Text className="text-center text-base font-semibold text-[#8E8E93]">
-            Ask me anything about your health or the planet
+          <Text className="text-center text-base font-semibold text-gray-500">
+            Ask anything about your health or the planet
           </Text>
+          {error && (
+            <View className="mt-3 w-full rounded-xl bg-red-50 px-4 py-3">
+              <Text className="text-center text-sm font-semibold text-red-500">{error}</Text>
+            </View>
+          )}
         </View>
 
         <ScrollView
           ref={scrollRef}
           className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}>
           {messages.length === 0 && (
-            <View className="items-center gap-y-3 px-5 py-10">
-              <Text className="text-xl font-extrabold text-black">Start a Conversation</Text>
-              <Text className="text-center text-sm font-medium leading-6 text-[#8E8E93]">
+            <View className="items-center gap-3 px-5 py-10">
+              <Text className="text-xl font-bold text-black">Start a Conversation</Text>
+              <Text className="text-center text-[15px] font-medium leading-[22px] text-gray-500">
                 Ask questions about products, get health tips, or find eco-friendly alternatives
               </Text>
             </View>
           )}
 
-          {messages.map((message) => (
-            <View key={message.id} className="mb-3">
-              {message.parts.map((part, index) => {
-                if (part.type === 'text') {
-                  const bubbleBase = 'max-w-[80%] px-4 py-3 rounded-2xl';
-                  const bubbleRole =
-                    message.role === 'user' ? 'bg-[#34C759] self-end' : 'bg-white self-start';
-                  const textRole = message.role === 'user' ? 'text-white' : 'text-black';
+          {messages.map((m) => (
+            <View
+              key={m.id}
+              style={{ marginVertical: 6, maxWidth: '90%' }}
+              className={m.role === 'user' ? 'items-end self-end' : 'self-start'}>
+              {m.imageUri ? (
+                <Image
+                  source={{ uri: m.imageUri }}
+                  style={{
+                    width: 220,
+                    height: 140,
+                    borderRadius: 12,
+                    marginBottom: 6,
+                    backgroundColor: '#efefef',
+                  }}
+                  resizeMode="cover"
+                />
+              ) : null}
 
-                  return (
-                    <View key={`${message.id}-${index}`} className={`${bubbleBase} ${bubbleRole}`}>
-                      <Text className={`text-[15px] font-medium leading-6 ${textRole}`}>
-                        {part.text}
-                      </Text>
-                    </View>
-                  );
-                }
-
-                if (part.type === 'tool') {
-                  // tool style rendering (suggestProduct / processing / errors)
-                  if (part.state === 'input-streaming' || part.state === 'input-available') {
-                    return (
-                      <View
-                        key={`${message.id}-${index}`}
-                        className="self-start rounded-2xl bg-[#F2F2F7] px-4 py-3">
-                        <Text className="text-sm font-semibold text-[#8E8E93]">
-                          Analyzing with Vercel AI...
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  if (part.state === 'output-available') {
-                    const output = (part as any).output;
-                    if ((part as any).toolName === 'suggestProduct' && output) {
-                      return (
-                        <View
-                          key={`${message.id}-${index}`}
-                          className="max-w-[90%] self-start rounded-xl bg-white p-5">
-                          <Text className="text-lg font-bold text-black">{output.productName}</Text>
-                          <Text className="mt-2 text-sm font-medium leading-6 text-[#8E8E93]">
-                            {output.reason}
-                          </Text>
-
-                          <View className="mt-3 flex-row space-x-4">
-                            <View className="flex-row items-center space-x-2">
-                              <Text className="text-sm font-semibold text-[#8E8E93]">Health</Text>
-                              <Text
-                                className="text-[18px] font-extrabold"
-                                style={{ color: getScoreColor(output.healthScore) }}>
-                                {output.healthScore}
-                              </Text>
-                            </View>
-
-                            <View className="flex-row items-center space-x-2">
-                              <Text className="text-sm font-semibold text-[#8E8E93]">Planet</Text>
-                              <Text
-                                className="text-[18px] font-extrabold"
-                                style={{ color: getScoreColor(output.planetScore) }}>
-                                {output.planetScore}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      );
-                    }
-
-                    // generic tool output fallback
-                    return (
-                      <View
-                        key={`${message.id}-${index}`}
-                        className="self-start rounded-2xl bg-[#F2F2F7] px-4 py-3">
-                        <Text className="text-sm font-semibold text-[#8E8E93]">
-                          {JSON.stringify((part as any).output)}
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  if (part.state === 'output-error') {
-                    return (
-                      <View
-                        key={`${message.id}-${index}`}
-                        className="self-start rounded-2xl bg-[#FFEBEE] px-4 py-3">
-                        <Text className="text-sm font-medium text-[#FF453A]">{part.errorText}</Text>
-                      </View>
-                    );
-                  }
-                }
-
-                return null;
-              })}
+              <View
+                style={{
+                  backgroundColor: m.role === 'user' ? '#34C759' : '#FFFFFF',
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 18,
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  shadowColor: '#000',
+                  shadowOpacity: 0.03,
+                  shadowRadius: 6,
+                }}>
+                <Text
+                  style={{
+                    color: m.role === 'user' ? '#fff' : '#000',
+                    fontSize: 15,
+                    lineHeight: 22,
+                  }}>
+                  {m.text}
+                </Text>
+              </View>
             </View>
           ))}
 
-          {isProcessingLocal && (
-            <View className="flex-row space-x-2 self-start rounded-2xl bg-white px-4 py-3">
-              <View className="h-2 w-2 rounded-full bg-[#8E8E93]" />
-              <View className="h-2 w-2 rounded-full bg-[#8E8E93]" />
-              <View className="h-2 w-2 rounded-full bg-[#8E8E93]" />
+          {loading && (
+            <View className="self-start rounded-[20px] bg-white px-4 py-3" style={{ marginTop: 8 }}>
+              <Text className="text-sm font-semibold text-gray-500">Thinking…</Text>
             </View>
           )}
         </ScrollView>
 
+        {/* Quick prompts */}
         {messages.length === 0 && (
-          <View className="flex-row flex-wrap space-x-2 px-5 py-3">
-            {QUICK_PROMPTS.map((prompt) => (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
+            {QUICK_PROMPTS.map((p) => (
               <TouchableOpacity
-                key={prompt}
-                className="rounded-2xl border border-[#F2F2F7] bg-white px-4 py-2"
-                onPress={() => handleQuickPrompt(prompt)}>
-                <Text className="text-sm font-semibold text-[#34C759]">{prompt}</Text>
+                key={p}
+                onPress={() => handleQuickPrompt(p)}
+                style={{
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: '#E6E6E6',
+                  backgroundColor: '#FFFFFF',
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  marginRight: 8,
+                  marginTop: 8,
+                }}>
+                <Text style={{ color: '#16A34A', fontWeight: '600' }}>{p}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
         <View
-          className="border-t border-[#F2F2F7] bg-[#FAFAFA] px-5 pt-3"
-          style={{ paddingBottom: insets.bottom }}>
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: '#EDEDED',
+            backgroundColor: '#FAFAFA',
+            paddingHorizontal: 12,
+            paddingTop: 10,
+            paddingBottom: insets.bottom || 12,
+          }}>
           {selectedImage && (
-            <View className="mb-2 flex-row items-center justify-between rounded-md bg-[#E8F5E9] px-3 py-2">
-              <Text className="text-sm font-semibold text-[#34C759]">Image selected</Text>
+            <View
+              style={{
+                marginBottom: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#ECFDF0',
+                padding: 8,
+                borderRadius: 10,
+              }}>
+              <Text style={{ color: '#059669', fontWeight: '600' }}>Image selected</Text>
               <TouchableOpacity onPress={() => setSelectedImage(null)}>
-                <Text className="text-sm font-semibold text-[#FF453A]">Remove</Text>
+                <Text style={{ color: '#DC2626', fontWeight: '600' }}>Remove</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <View className="flex-row items-end space-x-2 pb-3">
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
             <TouchableOpacity
-              className="h-10 w-10 items-center justify-center rounded-full bg-white"
-              onPress={pickImage}>
-              <Upload size={20} color="#8E8E93" />
+              onPress={pickImage}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: '#fff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Upload size={18} color="#8E8E93" />
             </TouchableOpacity>
 
             <TextInput
-              className="max-h-[100px] flex-1 rounded-2xl bg-white px-4 py-2 text-[15px] font-medium text-black"
-              placeholder="Ask something..."
-              placeholderTextColor="#8E8E93"
               value={input}
               onChangeText={setInput}
+              placeholder="Ask something..."
+              placeholderTextColor="#8E8E93"
               multiline
               maxLength={500}
+              style={{
+                flex: 1,
+                maxHeight: 100,
+                borderRadius: 20,
+                backgroundColor: '#FFFFFF',
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontSize: 15,
+              }}
             />
 
             <TouchableOpacity
-              className={`h-10 w-10 items-center justify-center rounded-full ${!input.trim() && !selectedImage ? 'bg-[#F2F2F7]' : 'bg-[#34C759]'}`}
               onPress={handleSend}
-              disabled={!input.trim() && !selectedImage}>
-              <Send size={20} color={!input.trim() && !selectedImage ? '#8E8E93' : '#FFFFFF'} />
+              disabled={!input.trim() && !selectedImage}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: !input.trim() && !selectedImage ? '#E5E7EB' : '#34C759',
+              }}>
+              <Send size={16} color={!input.trim() && !selectedImage ? '#8E8E93' : '#fff'} />
             </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
     </View>
   );
-}
-
-/** helpers **/
-
-function getScoreColor(score: number): string {
-  if (score >= 75) return '#34C759';
-  if (score >= 50) return '#FFB800';
-  return '#FF453A';
-}
-
-// Build messages for API by taking last N messages and mapping to provider format.
-// We store simple text parts only — feel free to expand for multimodal content later.
-function buildMessagesForApi(history: ChatMessage[]) {
-  // map to OpenAI-compatible role/content structures
-  return history.map((m) => {
-    const textParts = m.parts
-      .map((p) => (p.type === 'text' ? p.text : ''))
-      .filter(Boolean)
-      .join('\n');
-    return {
-      role: m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'system',
-      content: [{ type: 'text', text: textParts }],
-    };
-  });
-}
-
-// Try to extract JSON object from assistant text. E.g. model returns:
-// "Here's my suggestion:\n```json\n{ "productName": "...", "reason": "...", "healthScore": 80, "planetScore": 70 }\n```"
-function tryExtractJSON(text: string) {
-  if (!text || typeof text !== 'string') return null;
-  // Look for a JSON block between triple backticks or braces.
-  const codeFenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const raw = codeFenceMatch ? codeFenceMatch[1] : text;
-  // try to find first {...} block
-  const firstBrace = raw.indexOf('{');
-  const lastBrace = raw.lastIndexOf('}');
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    const jsonText = raw.slice(firstBrace, lastBrace + 1);
-    try {
-      const parsed = JSON.parse(jsonText);
-      // validate minimal shape
-      const schema = z.object({
-        productName: z.string().optional(),
-        reason: z.string().optional(),
-        healthScore: z.number().optional(),
-        planetScore: z.number().optional(),
-      });
-      return schema.parse(parsed);
-    } catch (e) {
-      // not JSON
-      return null;
-    }
-  }
-  return null;
 }
