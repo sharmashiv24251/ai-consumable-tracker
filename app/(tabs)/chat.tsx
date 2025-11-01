@@ -25,9 +25,47 @@ type Message = {
   role: 'user' | 'assistant';
   text?: string;
   imageUri?: string | null;
-  // Track if this message originally had an image (for context building)
   hadImage?: boolean;
 };
+
+/**
+ * SYSTEM_PROMPT: Instructs the model that it *is* Nubo and lists behavioral rules.
+ * Keep this prompt concise but explicit so the model reliably follows these constraints.
+ */
+const SYSTEM_PROMPT = `You are Nubo, a cheerful and caring AI companion who helps people make better health and sustainability choices. Here's who you are:
+
+PERSONALITY:
+- You're a forever-happy, cautious buddy who's always got your friend's back ("gotchu bro" energy)
+- Genuinely helpful and caring, but never preachy or judgmental
+- Your cuteness comes from your personality, not from overusing emojis or baby talk
+- You keep things simple, friendly, and easy to understand
+
+HOW YOU RESPOND:
+- Give concise, practical answers - no walls of text or unnecessary details
+- Skip obvious statements (don't say "The image shows a bottle of..." - just get to the point)
+- Focus on what actually matters to the user's question
+- Be specific when analyzing products but don't nitpick trivial things
+
+SMART RECOMMENDATIONS:
+- Always consider the user's budget context from their current product
+- If they show you a $10 perfume, don't suggest $100 alternatives unless they ask
+- Recommend products in the same price range or slightly better value
+- Think practically - if something is unavoidable (like glass perfume bottles), don't penalize it
+
+WHAT TO AVOID:
+- Don't state the obvious ("for external use only" for perfumes, etc.)
+- Don't nitpick normal design choices that can't be changed
+- Don't give unnecessary warnings about standard product usage
+- Skip redundant descriptions of what's in the image
+- Only flag genuinely concerning health or ethical issues
+
+WHEN ANALYZING PRODUCTS:
+- Jump straight to health or sustainability insights
+- Mention the product name naturally in your response, not as an announcement
+- Focus on ingredients, materials, or practices that actually impact health/environment
+- Give actionable advice when relevant
+
+Keep it real, keep it helpful, and remember - you're their buddy, not a textbook.`;
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
@@ -80,6 +118,7 @@ export default function ChatScreen() {
 
   /**
    * Build optimized conversation history for the AI model
+   * - Prepend a system message that sets Nubo's persona & rules
    * - Only include image data in the FIRST message where it was uploaded
    * - For subsequent messages, reference "the image from earlier" via text context
    * - Keep last N messages to avoid token limit issues
@@ -92,52 +131,44 @@ export default function ChatScreen() {
     const MAX_HISTORY = 10; // Keep last 10 messages for context
     const recentMessages = currentMessages.slice(-MAX_HISTORY);
 
-    const history: CoreMessage[] = recentMessages.map((msg) => {
+    // Start with the system prompt as the first message
+    const history: CoreMessage[] = [
+      {
+        role: 'system',
+        content: SYSTEM_PROMPT,
+      },
+    ];
+
+    // Append recent conversation messages
+    for (const msg of recentMessages) {
       if (msg.role === 'user') {
         const content: Array<any> = [];
-
-        // Add text content
-        if (msg.text) {
-          content.push({ type: 'text', text: msg.text });
-        }
-
-        // Only include image if this message originally had it
-        // This prevents re-sending images in every request
+        if (msg.text) content.push({ type: 'text', text: msg.text });
+        // Only include the image data if this message originally had it
         if (msg.imageUri && msg.hadImage) {
           content.push({ type: 'image', image: msg.imageUri });
         }
-
-        return { role: 'user', content };
+        history.push({ role: 'user', content });
       } else {
-        // Assistant message
-        return {
+        history.push({
           role: 'assistant',
           content: msg.text || '',
-        };
+        });
       }
-    });
+    }
 
-    // Add the new user message
+    // Build the new user message with contextual hinting
     const newContent: Array<any> = [];
-
-    // Check if there's an image in conversation history
     const hasImageInHistory = recentMessages.some((m) => m.hadImage && m.imageUri);
 
-    // Build context-aware text
     let contextualText = newUserText;
     if (!newImageData && hasImageInHistory && newUserText) {
-      // User is asking a follow-up about a previous image
+      // It's a follow-up referring to an earlier image
       contextualText = `Referring to the image from earlier in our conversation: ${newUserText}`;
     }
 
-    if (contextualText) {
-      newContent.push({ type: 'text', text: contextualText });
-    }
-
-    // Add new image if provided
-    if (newImageData) {
-      newContent.push({ type: 'image', image: newImageData });
-    }
+    if (contextualText) newContent.push({ type: 'text', text: contextualText });
+    if (newImageData) newContent.push({ type: 'image', image: newImageData });
 
     history.push({
       role: 'user',
@@ -158,7 +189,7 @@ export default function ChatScreen() {
       role: 'user',
       text: userText || (imageData ? 'Analyze this product' : ''),
       imageUri: imageData ?? null,
-      hadImage: !!imageData, // Track if this message originally had an image
+      hadImage: !!imageData,
     };
     appendMessage(userMessage);
 
@@ -170,17 +201,16 @@ export default function ChatScreen() {
       const google = createGoogleGenerativeAI({
         apiKey: process.env.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY,
       });
+      const model = google('gemini-2.5-flash');
 
-      const model = google('gemini-2.0-flash-exp');
-
-      // Build optimized conversation history
-      // Pass current messages BEFORE adding the new one, along with new message data
+      // Build optimized conversation history (uses messages state BEFORE we appended userMessage above)
       const conversationHistory = buildConversationHistory(
-        messages, // Use messages state (before new user message)
+        messages,
         userText || (imageData ? 'Analyze this product' : ''),
         imageData
       );
 
+      // Call the model
       const { text: assistantText } = await generateText({
         model,
         messages: conversationHistory,
@@ -214,7 +244,6 @@ export default function ChatScreen() {
   }
 
   const handleSend = async () => {
-    // Allow sending with just text OR just image OR both
     if (!input.trim() && !selectedImage) return;
     await callModel(input.trim(), selectedImage);
   };
@@ -308,7 +337,6 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        {/* Quick prompts - only show when no messages */}
         {messages.length === 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
             {QUICK_PROMPTS.map((p) => (
