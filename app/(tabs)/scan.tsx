@@ -352,16 +352,13 @@ Now, analyze the provided image and respond ONLY with JSON in the above format.
       <View className="flex-1 items-center justify-center bg-[#FAF9F7]" style={{ gap: 16 }}>
         <Animated.View style={{ marginBottom: 20, transform: [{ scale: pulseAnim }] }}>
           <View className="h-[200px] w-[200px] items-center justify-center">
-            <Animated.Image
-              source={{
-                uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-              }}
-              style={{ width: 200, height: 200, transform: [{ scale: pulseAnim }] }}
+            <Image
+              source={require('../../assets/NUBO/NUBO_PROCESSING.png')}
+              style={{ width: '100%', height: '100%' }}
               resizeMode="contain"
             />
           </View>
         </Animated.View>
-        <Text className="text-2xl font-bold text-black">Hold steady...</Text>
         <Text className="text-base font-medium text-[#8E8E93]">analyzing packaging</Text>
       </View>
     );

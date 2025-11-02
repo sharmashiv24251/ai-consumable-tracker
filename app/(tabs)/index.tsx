@@ -24,12 +24,13 @@ export default function DashboardScreen() {
 
         {!hasData ? (
           <View className="items-center space-y-5 px-10 pt-20">
-            <Image
-              source={{
-                uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-              }}
-              className="mb-3 h-48 w-48"
-            />
+            <View className="mb-3 h-64 w-64">
+              <Image
+                source={require('../../assets/NUBO/NUBO_SNAP.png')}
+                resizeMode="contain"
+                style={{ width: '100%', height: '100%' }}
+              />
+            </View>
 
             <Text className="text-center text-2xl font-extrabold text-black">
               Start Your Journey
@@ -46,7 +47,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <>
-            <View className="mx-6 mb-4 min-h-[160px] rounded-2xl bg-[#D4E8D4] p-6">
+            <View className="mx-6 mb-4 min-h-[160px] min-w-[300px] rounded-2xl bg-[#D4E8D4] p-6">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="mb-2 text-lg font-semibold text-[#1E3A1E]">
@@ -55,40 +56,45 @@ export default function DashboardScreen() {
                   <Text className="text-[72px] font-extrabold text-[#1E3A1E]">{scores.planet}</Text>
                 </View>
 
-                <Image
-                  source={require('../../assets/NUBO/NUBO_ENVIRONMENT.png')}
-                  resizeMode="contain"
-                  style={{ width: 240, height: 240 }}
-                  className="w-30 h-30 ml-4"
-                />
+                <View className="h-[120px] w-[120px]">
+                  <Image
+                    source={require('../../assets/NUBO/NUBO_ENVIRONMENT.png')}
+                    resizeMode="contain"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </View>
               </View>
             </View>
 
-            <View className="mx-6 mb-4 min-h-[160px] rounded-2xl bg-[#F5E6D8] p-6">
+            <View className="mx-6 mb-4 min-h-[160px] min-w-[300px] rounded-2xl bg-[#F5E6D8] p-6">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="mb-2 text-lg font-semibold text-[#8B4513]">Health Score</Text>
                   <Text className="text-[72px] font-extrabold text-[#8B4513]">{scores.health}</Text>
                 </View>
 
-                <Image
-                  source={require('../../assets/NUBO/NUBO_HEALTH.png')}
-                  resizeMode="contain"
-                  style={{ width: 240, height: 240 }}
-                  className="w-30 h-30 ml-4"
-                />
+                <View className=" h-[140px] w-[140px]">
+                  <Image
+                    source={require('../../assets/NUBO/NUBO_HEALTH.png')}
+                    resizeMode="contain"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </View>
               </View>
             </View>
 
-            <View className="mx-6 mb-4 rounded-xl bg-white p-5 shadow-sm">
-              <View className="flex-row items-center space-x-4">
-                <Image
-                  source={{
-                    uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-                  }}
-                  className="w-15 h-15"
-                />
-                <Text className="flex-1 text-base font-semibold leading-6 text-black">
+            <View className="mx-6 mb-4 max-h-16 overflow-hidden rounded-xl bg-white p-5 shadow-sm">
+              <View className="flex-row items-center ">
+                <View className="absolute h-[60px] w-[60px] translate-y-[15px] ">
+                  <Image
+                    source={require('../../assets/NUBO/NUBO_HI.png')}
+                    resizeMode="contain"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  className="flex-1 pl-20 text-base font-semibold leading-6 text-black">
                   You could try using a reusable water bottle!
                 </Text>
               </View>

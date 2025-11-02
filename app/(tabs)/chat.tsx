@@ -28,10 +28,6 @@ type Message = {
   hadImage?: boolean;
 };
 
-/**
- * SYSTEM_PROMPT: Instructs the model that it *is* Nubo and lists behavioral rules.
- * Keep this prompt concise but explicit so the model reliably follows these constraints.
- */
 const SYSTEM_PROMPT = `You are Nubo, a cheerful and caring AI companion who helps people make better health and sustainability choices. Here's who you are:
 
 PERSONALITY:
@@ -116,22 +112,17 @@ export default function ChatScreen() {
     setInput(prompt);
   };
 
-  /**
-   * Build optimized conversation history for the AI model
-   * - Prepend a system message that sets Nubo's persona & rules
-   * - Only include image data in the FIRST message where it was uploaded
-   * - For subsequent messages, reference "the image from earlier" via text context
-   * - Keep last N messages to avoid token limit issues
-   */
+  const USER_AVATAR: any = require('../../assets/NUBO/NUBO_THUMBS_UP.png');
+  const BOT_AVATAR: any = require('../../assets/NUBO/NUBO.png');
+
   const buildConversationHistory = (
     currentMessages: Message[],
     newUserText: string,
     newImageData?: string | null
   ): CoreMessage[] => {
-    const MAX_HISTORY = 10; // Keep last 10 messages for context
+    const MAX_HISTORY = 10;
     const recentMessages = currentMessages.slice(-MAX_HISTORY);
 
-    // Start with the system prompt as the first message
     const history: CoreMessage[] = [
       {
         role: 'system',
@@ -139,41 +130,31 @@ export default function ChatScreen() {
       },
     ];
 
-    // Append recent conversation messages
     for (const msg of recentMessages) {
       if (msg.role === 'user') {
         const content: Array<any> = [];
         if (msg.text) content.push({ type: 'text', text: msg.text });
-        // Only include the image data if this message originally had it
         if (msg.imageUri && msg.hadImage) {
           content.push({ type: 'image', image: msg.imageUri });
         }
         history.push({ role: 'user', content });
       } else {
-        history.push({
-          role: 'assistant',
-          content: msg.text || '',
-        });
+        history.push({ role: 'assistant', content: msg.text || '' });
       }
     }
 
-    // Build the new user message with contextual hinting
     const newContent: Array<any> = [];
     const hasImageInHistory = recentMessages.some((m) => m.hadImage && m.imageUri);
 
     let contextualText = newUserText;
     if (!newImageData && hasImageInHistory && newUserText) {
-      // It's a follow-up referring to an earlier image
       contextualText = `Referring to the image from earlier in our conversation: ${newUserText}`;
     }
 
     if (contextualText) newContent.push({ type: 'text', text: contextualText });
     if (newImageData) newContent.push({ type: 'image', image: newImageData });
 
-    history.push({
-      role: 'user',
-      content: newContent,
-    });
+    history.push({ role: 'user', content: newContent });
 
     return history;
   };
@@ -182,7 +163,6 @@ export default function ChatScreen() {
     setLoading(true);
     setError(null);
 
-    // Add user message to UI immediately
     const userId = Date.now().toString();
     const userMessage: Message = {
       id: `u-${userId}`,
@@ -203,18 +183,13 @@ export default function ChatScreen() {
       });
       const model = google('gemini-2.5-flash');
 
-      // Build optimized conversation history (uses messages state BEFORE we appended userMessage above)
       const conversationHistory = buildConversationHistory(
         messages,
         userText || (imageData ? 'Analyze this product' : ''),
         imageData
       );
 
-      // Call the model
-      const { text: assistantText } = await generateText({
-        model,
-        messages: conversationHistory,
-      });
+      const { text: assistantText } = await generateText({ model, messages: conversationHistory });
 
       appendMessage({
         id: `a-${Date.now().toString()}`,
@@ -248,25 +223,79 @@ export default function ChatScreen() {
     await callModel(input.trim(), selectedImage);
   };
 
+  const renderMessageRow = (m: Message) => {
+    const isUser = m.role === 'user';
+    return (
+      <View
+        key={m.id}
+        className={`my-2 flex-row ${isUser ? 'flex-row-reverse' : 'flex-row'} max-w-full items-end`}>
+        {/* Avatar */}
+        <View className="h-9 w-9 items-center justify-center overflow-hidden rounded-full">
+          {isUser ? (
+            USER_AVATAR ? (
+              <Image
+                source={USER_AVATAR}
+                style={{ width: '100%', height: '100%' }}
+                className="h-9 w-9 rounded-full"
+              />
+            ) : (
+              <View className="h-9 w-9 rounded-full bg-gray-200" />
+            )
+          ) : BOT_AVATAR ? (
+            <Image
+              source={BOT_AVATAR}
+              style={{ width: '100%', height: '100%' }}
+              className="h-9 w-9 rounded-full"
+            />
+          ) : (
+            <View className="h-9 w-9 rounded-full bg-gray-200" />
+          )}
+        </View>
+
+        <View className="ml-2 mr-2 flex-shrink">
+          {m.imageUri && m.hadImage ? (
+            // image preview
+            <Image
+              source={{ uri: m.imageUri }}
+              className="mb-1 h-[140px] w-[220px] rounded-[12px] bg-[#efefef]"
+              resizeMode="cover"
+            />
+          ) : null}
+
+          <View
+            className={`rounded-[18px] px-4 py-2.5 shadow-md ${isUser ? 'bg-[#34C759]' : 'bg-white'}`}
+            style={{ alignSelf: isUser ? 'flex-end' : 'flex-start' }}>
+            <Text className={`text-[15px] leading-[22px] ${isUser ? 'text-white' : 'text-black'}`}>
+              {m.text}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View className="flex-1">
       <View className="absolute inset-0">
-        <View style={{ flex: 1, backgroundColor: '#F8FFFA' }} />
+        <View className="flex-1 bg-[#F8FFFA]" />
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-        style={{ flex: 1 }}>
+        className="flex-1"
+        style={{}}>
         <View className="items-center gap-3 px-5 pb-5" style={{ paddingTop: insets.top + 16 }}>
           <Animated.View
             className="h-20 w-20 items-center justify-center rounded-full bg-green-50"
             style={{ transform: [{ scale: pulseAnim }] }}>
             <Sparkles size={32} color="#34C759" />
           </Animated.View>
+
           <Text className="text-center text-base font-semibold text-gray-500">
             Ask anything about your health or the planet
           </Text>
+
           {error && (
             <View className="mt-3 w-full rounded-xl bg-red-50 px-4 py-3">
               <Text className="text-center text-sm font-semibold text-red-500">{error}</Text>
@@ -288,115 +317,44 @@ export default function ChatScreen() {
             </View>
           )}
 
-          {messages.map((m) => (
-            <View
-              key={m.id}
-              style={{ marginVertical: 6, maxWidth: '90%' }}
-              className={m.role === 'user' ? 'items-end self-end' : 'self-start'}>
-              {m.imageUri && m.hadImage ? (
-                <Image
-                  source={{ uri: m.imageUri }}
-                  style={{
-                    width: 220,
-                    height: 140,
-                    borderRadius: 12,
-                    marginBottom: 6,
-                    backgroundColor: '#efefef',
-                  }}
-                  resizeMode="cover"
-                />
-              ) : null}
-
-              <View
-                style={{
-                  backgroundColor: m.role === 'user' ? '#34C759' : '#FFFFFF',
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 18,
-                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                  shadowColor: '#000',
-                  shadowOpacity: 0.03,
-                  shadowRadius: 6,
-                }}>
-                <Text
-                  style={{
-                    color: m.role === 'user' ? '#fff' : '#000',
-                    fontSize: 15,
-                    lineHeight: 22,
-                  }}>
-                  {m.text}
-                </Text>
-              </View>
-            </View>
-          ))}
+          {messages.map((m) => renderMessageRow(m))}
 
           {loading && (
-            <View className="self-start rounded-[20px] bg-white px-4 py-3" style={{ marginTop: 8 }}>
+            <View className="mt-2 self-start rounded-[20px] bg-white px-4 py-3">
               <Text className="text-sm font-semibold text-gray-500">Thinking…</Text>
             </View>
           )}
         </ScrollView>
 
         {messages.length === 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
+          <View className="flex-row flex-wrap px-4">
             {QUICK_PROMPTS.map((p) => (
               <TouchableOpacity
                 key={p}
                 onPress={() => handleQuickPrompt(p)}
-                style={{
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: '#E6E6E6',
-                  backgroundColor: '#FFFFFF',
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  marginRight: 8,
-                  marginTop: 8,
-                }}>
-                <Text style={{ color: '#16A34A', fontWeight: '600' }}>{p}</Text>
+                className="mr-2 mt-2 rounded-full border border-gray-200 bg-white px-4 py-2">
+                <Text className="font-semibold text-green-600">{p}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
         <View
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: '#EDEDED',
-            backgroundColor: '#FAFAFA',
-            paddingHorizontal: 12,
-            paddingTop: 10,
-            paddingBottom: insets.bottom || 12,
-          }}>
+          className="border-t border-gray-200 bg-gray-50 px-3 pt-2"
+          style={{ paddingBottom: insets.bottom || 12 }}>
           {selectedImage && (
-            <View
-              style={{
-                marginBottom: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: '#ECFDF0',
-                padding: 8,
-                borderRadius: 10,
-              }}>
-              <Text style={{ color: '#059669', fontWeight: '600' }}>Image selected</Text>
+            <View className="mb-2 flex-row items-center justify-between rounded-lg bg-green-50 p-2">
+              <Text className="font-semibold text-green-600">Image selected</Text>
               <TouchableOpacity onPress={() => setSelectedImage(null)}>
-                <Text style={{ color: '#DC2626', fontWeight: '600' }}>Remove</Text>
+                <Text className="font-semibold text-red-600">Remove</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+          <View className="flex-row items-end space-x-2">
             <TouchableOpacity
               onPress={pickImage}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#fff',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
+              className="h-10 w-10 items-center justify-center rounded-full bg-white">
               <Upload size={18} color="#8E8E93" />
             </TouchableOpacity>
 
@@ -407,28 +365,15 @@ export default function ChatScreen() {
               placeholderTextColor="#8E8E93"
               multiline
               maxLength={500}
-              style={{
-                flex: 1,
-                maxHeight: 100,
-                borderRadius: 20,
-                backgroundColor: '#FFFFFF',
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 15,
-              }}
+              className="max-h-[100px] flex-1 rounded-full bg-white px-3 py-2 text-[15px]"
             />
 
             <TouchableOpacity
               onPress={handleSend}
               disabled={!input.trim() && !selectedImage}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: !input.trim() && !selectedImage ? '#E5E7EB' : '#34C759',
-              }}>
+              className={`h-10 w-10 items-center justify-center rounded-full ${
+                !input.trim() && !selectedImage ? 'bg-gray-200' : 'bg-[#34C759]'
+              }`}>
               <Send size={16} color={!input.trim() && !selectedImage ? '#8E8E93' : '#fff'} />
             </TouchableOpacity>
           </View>
