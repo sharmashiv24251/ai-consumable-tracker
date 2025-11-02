@@ -56,9 +56,9 @@ export default function DashboardScreen() {
                 </View>
 
                 <Image
-                  source={{
-                    uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-                  }}
+                  source={require('../../assets/NUBO/NUBO_ENVIRONMENT.png')}
+                  resizeMode="contain"
+                  style={{ width: 240, height: 240 }}
                   className="w-30 h-30 ml-4"
                 />
               </View>
@@ -72,9 +72,9 @@ export default function DashboardScreen() {
                 </View>
 
                 <Image
-                  source={{
-                    uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-                  }}
+                  source={require('../../assets/NUBO/NUBO_HEALTH.png')}
+                  resizeMode="contain"
+                  style={{ width: 240, height: 240 }}
                   className="w-30 h-30 ml-4"
                 />
               </View>
