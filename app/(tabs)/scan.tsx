@@ -112,7 +112,7 @@ Now, analyze the provided image and respond ONLY with JSON in the above format.
       });
 
       const { text: response } = await generateText({
-        model: google('gemini-2.0-flash-exp'),
+        model: google('gemini-2.5-flash'),
         messages: [
           {
             role: 'user',
