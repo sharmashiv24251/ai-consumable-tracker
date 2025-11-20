@@ -8,6 +8,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, TouchableOpacity, Animated, ScrollView, Platform, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
+import { ScoreCard } from '../../../common/components';
 import { useUploadScan } from '../hooks/useUploadScan';
 import type { ScanResult } from '../types';
 
@@ -211,35 +212,9 @@ export default function ScanScreen() {
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}>
-          <View className="items-center p-6" style={{ gap: 20 }}>
-            {/* Score Cards */}
-            <View className="w-full flex-row" style={{ gap: 16 }}>
-              <View
-                className="flex-1 items-center rounded-2xl bg-white p-5 shadow-sm"
-                style={{ gap: 8 }}>
-                <Text className="text-sm font-semibold text-[#8E8E93]">Health</Text>
-                <Text className="text-5xl font-bold text-[#5DB075]">{result.healthScore}</Text>
-                <Text className="text-sm font-semibold text-[#8E8E93]">/ 100</Text>
-              </View>
-
-              <View
-                className="flex-1 items-center rounded-2xl bg-white p-5 shadow-sm"
-                style={{ gap: 8 }}>
-                <Text className="text-sm font-semibold text-[#8E8E93]">Environment</Text>
-                <Text className="text-5xl font-bold text-[#5DB075]">{result.planetScore}</Text>
-                <Text className="text-sm font-semibold text-[#8E8E93]">/ 100</Text>
-              </View>
-            </View>
-
-            {/* Mascot */}
-            <Image
-              source={{
-                uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/30vn8v0fxcvo71pq0vu4u',
-              }}
-              className="h-36 w-36"
-              resizeMode="contain"
-            />
-          </View>
+          {/* Score Cards */}
+          <ScoreCard type="environment" score={result.planetScore} />
+          <ScoreCard type="health" score={result.healthScore} />
 
           {/* Overview Card */}
           <View className="mx-5 mb-6 rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 20 }}>
@@ -303,12 +278,8 @@ export default function ScanScreen() {
       <View className="flex-1 items-center justify-center bg-[#FAF9F7]" style={{ gap: 16 }}>
         <StatusBar style="dark" />
         <Animated.View style={{ marginBottom: 20, transform: [{ scale: pulseAnim }] }}>
-          <View className="h-[200px] w-[200px] items-center justify-center">
-            <Image
-              source={require('../../../assets/NUBO/NUBO_PROCESSING.png')}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="contain"
-            />
+          <View className="h-[200px] w-[200px] items-center justify-center rounded-full bg-[#E8F5E9]">
+            <Text style={{ fontSize: 100 }}>🔍</Text>
           </View>
         </Animated.View>
         <Text className="text-base font-medium text-[#8E8E93]">analyzing packaging</Text>

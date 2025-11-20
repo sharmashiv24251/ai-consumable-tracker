@@ -78,9 +78,6 @@ export default function ChatWithAI() {
     setInput(prompt);
   };
 
-  const USER_AVATAR: any = require('../../../assets/NUBO/NUBO_THUMBS_UP.png');
-  const BOT_AVATAR: any = require('../../../assets/NUBO/NUBO.png');
-
   async function handleSendMessage(userText: string, imageData?: string | null) {
     setError(null);
 
@@ -146,23 +143,13 @@ export default function ChatWithAI() {
         {/* Avatar */}
         <View className="h-9 w-9 items-center justify-center overflow-hidden rounded-full">
           {isUser ? (
-            USER_AVATAR ? (
-              <Image
-                source={USER_AVATAR}
-                style={{ width: '100%', height: '100%' }}
-                className="h-9 w-9 rounded-full"
-              />
-            ) : (
-              <View className="h-9 w-9 rounded-full bg-gray-200" />
-            )
-          ) : BOT_AVATAR ? (
-            <Image
-              source={BOT_AVATAR}
-              style={{ width: '100%', height: '100%' }}
-              className="h-9 w-9 rounded-full"
-            />
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#34C759]">
+              <Text style={{ fontSize: 20 }}>👤</Text>
+            </View>
           ) : (
-            <View className="h-9 w-9 rounded-full bg-gray-200" />
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-[#E8F5E9]">
+              <Text style={{ fontSize: 20 }}>🤖</Text>
+            </View>
           )}
         </View>
 
