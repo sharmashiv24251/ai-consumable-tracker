@@ -2,6 +2,7 @@ import { useApp } from '../../../contexts/AppContext';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { StatusBar } from 'expo-status-bar';
 import { Camera, X, Upload } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, TouchableOpacity, Animated, ScrollView, Platform, Image } from 'react-native';
@@ -193,6 +194,7 @@ export default function ScanScreen() {
   if (scanState === 'result' && result) {
     return (
       <View className="flex-1 bg-[#FAF9F7]">
+        <StatusBar style="dark" />
         <View
           className="flex-row items-center justify-between px-5 pb-4"
           style={{ paddingTop: insets.top + 16 }}>
@@ -299,6 +301,7 @@ export default function ScanScreen() {
   if (scanState === 'processing') {
     return (
       <View className="flex-1 items-center justify-center bg-[#FAF9F7]" style={{ gap: 16 }}>
+        <StatusBar style="dark" />
         <Animated.View style={{ marginBottom: 20, transform: [{ scale: pulseAnim }] }}>
           <View className="h-[200px] w-[200px] items-center justify-center">
             <Image
@@ -315,14 +318,12 @@ export default function ScanScreen() {
 
   return (
     <View className="flex-1 bg-black">
+      <StatusBar style="light" />
       {shouldShowCamera ? (
         <CameraView ref={cameraRef} style={{ flex: 1 }} facing={'back' as CameraType}>
           <View className="flex-1 bg-black/30" style={{ paddingTop: insets.top + 16 }}>
-            <View className="items-center px-5 pt-5" style={{ gap: 8 }}>
-              <Text className="text-2xl font-bold text-white">AI Scan</Text>
-              <Text className="text-[15px] font-medium text-white/80">
-                Hold steady... analyzing packaging
-              </Text>
+            <View className="mb-6 px-6">
+              <Text className="text-4xl font-extrabold text-white">Scan</Text>
             </View>
 
             <View className="mx-10 my-14 flex-1 rounded-3xl border-[3px] border-dashed border-white" />

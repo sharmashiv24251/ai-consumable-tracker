@@ -199,16 +199,22 @@ export default function ChatWithAI() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
         className="flex-1"
         style={{}}>
-        <View className="items-center gap-3 px-5 pb-5" style={{ paddingTop: insets.top + 16 }}>
-          <Animated.View
-            className="h-20 w-20 items-center justify-center rounded-full bg-green-50"
-            style={{ transform: [{ scale: pulseAnim }] }}>
-            <Sparkles size={32} color="#34C759" />
-          </Animated.View>
+        <View className="bg-[#F8FFFA]" style={{ paddingTop: insets.top + 16 }}>
+          <View className="mb-6 px-6">
+            <Text className="text-4xl font-extrabold text-black">Ask AI</Text>
+          </View>
 
-          <Text className="text-center text-base font-semibold text-gray-500">
-            Ask anything about your health or the planet
-          </Text>
+          <View className="items-center gap-3 px-5 pb-5">
+            <Animated.View
+              className="h-20 w-20 items-center justify-center rounded-full bg-green-50"
+              style={{ transform: [{ scale: pulseAnim }] }}>
+              <Sparkles size={32} color="#34C759" />
+            </Animated.View>
+
+            <Text className="text-center text-base font-semibold text-gray-500">
+              Ask anything about your health or the planet
+            </Text>
+          </View>
 
           {error && (
             <View className="mt-3 w-full rounded-xl bg-red-50 px-4 py-3">

@@ -1,8 +1,16 @@
 import { Tabs } from 'expo-router';
-import { Heart, Scan, MessageCircle } from 'lucide-react-native';
+import { Heart, Scan, MessageCircle, User } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import React from 'react';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
+  const handleTabPress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
   return (
     <Tabs
       screenOptions={{
@@ -18,11 +26,14 @@ export default function TabLayout() {
           fontSize: 11,
           fontWeight: '600',
         },
+      }}
+      screenListeners={{
+        tabPress: handleTabPress,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Wellness',
+          title: 'Dashboard',
           tabBarIcon: ({ color }) => <Heart color={color} size={24} />,
         }}
       />
@@ -38,6 +49,13 @@ export default function TabLayout() {
         options={{
           title: 'Ask AI',
           tabBarIcon: ({ color }) => <MessageCircle color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <User color={color} size={24} />,
         }}
       />
     </Tabs>

@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider } from 'contexts/AppContext';
@@ -26,6 +27,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AppProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
+          <StatusBar style="dark" />
           <RootLayoutNav />
         </GestureHandlerRootView>
       </AppProvider>
