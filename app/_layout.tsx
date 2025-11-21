@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider } from 'contexts/AppContext';
 import { queryClient } from './react-query/client';
+import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
 

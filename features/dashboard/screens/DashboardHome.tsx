@@ -4,7 +4,6 @@ import React from 'react';
 import { ScrollView, Text, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScoreCard } from '../../../common/components';
-import '../../../global.css';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 export default function DashboardHome() {

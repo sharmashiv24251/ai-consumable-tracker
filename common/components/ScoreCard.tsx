@@ -68,7 +68,7 @@ export default function ScoreCard({ type, score }: ScoreCardProps) {
           {config.icon ? (
             <Image
               source={config.icon}
-              className="h-full w-full"
+              style={{height:"100%" , width:"100%"}}
               resizeMode="contain"
             />
           ) : (
