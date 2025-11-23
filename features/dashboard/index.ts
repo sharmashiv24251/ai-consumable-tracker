@@ -6,8 +6,19 @@
 // Screens
 export { default as DashboardHome } from './screens/DashboardHome';
 
+// Components
+export { default as TrendsChart } from './components/TrendsChart';
+
 // Hooks
 export { useDashboardData } from './hooks/useDashboardData';
+export { useTrendsData } from './hooks/useTrendsData';
 
 // Types
-export type { DashboardData, DashboardScores, FeedItem } from './types';
+export type {
+  DashboardData,
+  DashboardScores,
+  FeedItem,
+  TrendsData,
+  TrendDataPoint,
+  TrendFilter,
+} from './types';

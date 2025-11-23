@@ -39,6 +39,7 @@ features/
 ```
 
 Each feature follows this internal structure:
+
 ```
 feature-name/
 ├── api/             # API client functions
@@ -49,6 +50,7 @@ feature-name/
 ```
 
 **Important**: Always import from feature barrel exports, never deep imports:
+
 ```typescript
 // ✅ Good
 import { DashboardHome } from 'features/dashboard';
@@ -105,6 +107,7 @@ The app currently uses mock APIs to simulate backend:
 ### Routing
 
 Uses Expo Router (file-based routing):
+
 - `app/(tabs)/` - Main tab navigation
   - `index.tsx` → Dashboard (home)
   - `scan.tsx` → Product scanner
@@ -121,9 +124,19 @@ Uses Expo Router (file-based routing):
 ## Styling
 
 Uses NativeWind (Tailwind CSS for React Native):
+
 - Utility-first CSS classes work across iOS/Android/Web
 - Global styles in `global.css`
 - Tailwind config in `tailwind.config.js`
+- responsiveness is handled using Tailwind's responsive prefixes (e.g., `xs:text-sm`) , available breakpoints
+  screens: {
+  xxs: '360px',
+  xs: '375px',
+  sm: '390px',
+  md: '414px',
+  lg: '430px',
+  xl: '480px',
+  },
 
 ## Common Patterns
 
@@ -240,6 +253,7 @@ export function useUpdateExample() {
 ## Deployment
 
 Configured for Vercel web deployment:
+
 - `vercel.json` - Vercel configuration
 - `npm run vercel-build` - Exports static build to `dist/`
 - Build serves from `index.html` with SPA routing

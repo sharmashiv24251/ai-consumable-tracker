@@ -5,6 +5,7 @@ import { ScrollView, Text, View, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScoreCardsRow } from '../../../common/components';
 import { useDashboardData } from '../hooks/useDashboardData';
+import TrendsChart from '../components/TrendsChart';
 
 export default function DashboardHome() {
   const insets = useSafeAreaInsets();
@@ -50,6 +51,8 @@ export default function DashboardHome() {
         ) : (
           <>
             <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
+
+            <TrendsChart />
 
             <View className="mx-6 mb-4 max-h-16 overflow-hidden rounded-xl bg-white p-5 shadow-sm">
               <View className="flex-row items-center ">

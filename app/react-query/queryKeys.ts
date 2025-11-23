@@ -13,6 +13,7 @@ export const queryKeys = {
     all: ['dashboard'] as const,
     data: () => [...queryKeys.dashboard.all, 'data'] as const,
     feed: (userId?: string) => [...queryKeys.dashboard.all, 'feed', userId] as const,
+    trends: () => [...queryKeys.dashboard.all, 'trends'] as const,
   },
 
   // Scan feature keys
