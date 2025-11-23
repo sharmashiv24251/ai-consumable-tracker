@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Image, Animated } from 'react-native';
 
 interface ScoreCardsRowProps {
   environmentScore: number;
@@ -12,19 +12,72 @@ const CARD_CONFIG = {
     textColor: '#8B4513',
     icon: require('../../assets/icons/heart.png'),
     title: 'Health',
+    iconSize: 50,
   },
   environment: {
     backgroundColor: '#D4E8D4',
     textColor: '#1E3A1E',
     icon: require('../../assets/icons/earth.png'),
     title: 'Environment',
+    iconSize: 45,
   },
 };
 
 export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCardsRowProps) {
-  const renderCard = (type: 'environment' | 'health', score: number) => {
+  // Animated values for each score
+  const healthAnimatedValue = useRef(new Animated.Value(0)).current;
+  const environmentAnimatedValue = useRef(new Animated.Value(0)).current;
+
+  // Display values that update during animation
+  const [displayHealthScore, setDisplayHealthScore] = useState(0);
+  const [displayEnvironmentScore, setDisplayEnvironmentScore] = useState(0);
+
+  // Track if animation has been triggered
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    // Add listeners to update display values
+    const healthListener = healthAnimatedValue.addListener(({ value }) => {
+      setDisplayHealthScore(Math.round(value));
+    });
+
+    const environmentListener = environmentAnimatedValue.addListener(({ value }) => {
+      setDisplayEnvironmentScore(Math.round(value));
+    });
+
+    return () => {
+      healthAnimatedValue.removeListener(healthListener);
+      environmentAnimatedValue.removeListener(environmentListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Trigger animation when scores are loaded (not 0) and haven't animated yet
+    if ((healthScore > 0 || environmentScore > 0) && !hasAnimated) {
+      setHasAnimated(true);
+
+      // Animate health score
+      Animated.timing(healthAnimatedValue, {
+        toValue: healthScore,
+        duration: 1200,
+        useNativeDriver: false,
+      }).start();
+
+      // Animate environment score
+      Animated.timing(environmentAnimatedValue, {
+        toValue: environmentScore,
+        duration: 1200,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [healthScore, environmentScore, hasAnimated]);
+
+  const renderCard = (
+    type: 'environment' | 'health',
+    displayScore: number,
+    animatedValue: Animated.Value
+  ) => {
     const config = CARD_CONFIG[type];
-    const progressWidth = Math.min(Math.max(score, 0), 100);
 
     return (
       <View
@@ -40,8 +93,10 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
           <View>
             {/* Score Display: "85 / 100" format */}
             <View className="mb-2 flex-row items-baseline">
-              <Text className="text-5xl font-extrabold" style={{ color: config.textColor }}>
-                {score}
+              <Text
+                className="text-5xl font-extrabold"
+                style={{ color: config.textColor, fontVariant: ['tabular-nums'] }}>
+                {String(displayScore).padStart(2, '0')}
               </Text>
               <Text
                 className="ml-1 text-lg font-medium"
@@ -51,11 +106,16 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
             </View>
 
             {/* Progress Bar */}
-            <View className="h-2 w-full overflow-hidden rounded-full bg-white/30">
-              <View
-                className="h-full rounded-full"
+            <View className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
+              <Animated.View
                 style={{
-                  width: `${progressWidth}%`,
+                  height: '100%',
+                  borderRadius: 9999,
+                  width: animatedValue.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%'],
+                    extrapolate: 'clamp',
+                  }),
                   backgroundColor: config.textColor,
                 }}
               />
@@ -68,10 +128,10 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
               source={config.icon}
               style={{
                 position: 'absolute',
-                top: 0,
-                right: 0,
-                height: 50,
-                width: 50,
+                top: -10,
+                right: -10,
+                height: config.iconSize,
+                width: config.iconSize,
               }}
               resizeMode="contain"
             />
@@ -83,8 +143,8 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
 
   return (
     <View className="mx-6 mb-4 flex-row" style={{ gap: 12 }}>
-      {renderCard('health', healthScore)}
-      {renderCard('environment', environmentScore)}
+      {renderCard('health', displayHealthScore, healthAnimatedValue)}
+      {renderCard('environment', displayEnvironmentScore, environmentAnimatedValue)}
     </View>
   );
 }

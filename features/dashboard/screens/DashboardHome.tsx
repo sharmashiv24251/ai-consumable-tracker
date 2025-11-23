@@ -1,7 +1,7 @@
 import { useApp } from '../../../contexts/AppContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, Text, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { ScrollView, Text, View, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScoreCardsRow } from '../../../common/components';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -10,7 +10,7 @@ export default function DashboardHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { scanHistory } = useApp();
-  const { data: dashboardData, isLoading } = useDashboardData();
+  const { data: dashboardData } = useDashboardData();
 
   const hasData = scanHistory.length > 0;
 
@@ -49,14 +49,7 @@ export default function DashboardHome() {
           </View>
         ) : (
           <>
-            {isLoading ? (
-              <View className="mx-6 mb-4 items-center py-10">
-                <ActivityIndicator size="large" color="#34C759" />
-                <Text className="mt-4 text-base text-gray-500">Loading scores...</Text>
-              </View>
-            ) : (
-              <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
-            )}
+            <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
 
             <View className="mx-6 mb-4 max-h-16 overflow-hidden rounded-xl bg-white p-5 shadow-sm">
               <View className="flex-row items-center ">
