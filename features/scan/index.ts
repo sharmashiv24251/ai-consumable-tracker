@@ -19,5 +19,6 @@ export type {
   ScanUploadPayload,
   ScanScores,
   ScanCategory,
+  CategoryPoints,
   ScanHistoryItem as ScanHistoryItemType,
 } from './types';

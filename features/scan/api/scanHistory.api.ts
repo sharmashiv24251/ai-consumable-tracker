@@ -28,7 +28,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
           { id: 'h3', text: 'No added sugars' },
         ],
         ok: [{ id: 'h4', text: 'Slightly processed for shelf stability' }],
-        bad: [],
+        bad: [{ id: 'h5', text: 'No added sugars' }],
       },
       environment: {
         good: [
@@ -36,7 +36,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
           { id: 'e2', text: 'Sustainable almond farming practices' },
         ],
         ok: [{ id: 'e3', text: 'Water-intensive crop' }],
-        bad: [],
+        bad: [{ id: 'e4', text: 'No added sugars' }],
       },
     },
   },
@@ -227,10 +227,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
  * Fetch scan history for a user
  * In real implementation, this would be GET /api/scan/history?userId={userId}&limit={limit}
  */
-export async function fetchScanHistory(
-  userId: string,
-  limit?: number
-): Promise<ScanHistoryItem[]> {
+export async function fetchScanHistory(userId: string, limit?: number): Promise<ScanHistoryItem[]> {
   console.log(`[Scan History API] Fetching history for user ${userId}...`);
 
   const history = limit ? MOCK_SCAN_HISTORY.slice(0, limit) : MOCK_SCAN_HISTORY;

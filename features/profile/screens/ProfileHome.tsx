@@ -97,18 +97,16 @@ export default function ProfileHome() {
                   productName: scan.productName,
                   healthScore: scan.scores.health,
                   planetScore: scan.scores.environment,
-                  goodPoints: [
-                    ...scan.result.health.good.map((p) => p.text),
-                    ...scan.result.environment.good.map((p) => p.text),
-                  ],
-                  okayPoints: [
-                    ...scan.result.health.ok.map((p) => p.text),
-                    ...scan.result.environment.ok.map((p) => p.text),
-                  ],
-                  badPoints: [
-                    ...scan.result.health.bad.map((p) => p.text),
-                    ...scan.result.environment.bad.map((p) => p.text),
-                  ],
+                  health: {
+                    good: scan.result.health.good.map((p) => p.text),
+                    okay: scan.result.health.ok.map((p) => p.text),
+                    bad: scan.result.health.bad.map((p) => p.text),
+                  },
+                  environment: {
+                    good: scan.result.environment.good.map((p) => p.text),
+                    okay: scan.result.environment.ok.map((p) => p.text),
+                    bad: scan.result.environment.bad.map((p) => p.text),
+                  },
                 };
 
                 return (

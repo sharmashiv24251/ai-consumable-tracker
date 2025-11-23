@@ -1,28 +1,36 @@
 /**
  * Scan Result Screen
- * Displays detailed scan results for a product
+ * Displays detailed scan results for a product with tabs for Health and Environment
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { ScoreCardsRow } from '../common/components';
 
+type TabType = 'health' | 'environment';
+
+interface CategoryPoints {
+  good: string[];
+  okay: string[];
+  bad: string[];
+}
+
 interface ScanResultData {
   productName: string;
   healthScore: number;
   planetScore: number;
-  goodPoints: string[];
-  okayPoints: string[];
-  badPoints: string[];
+  health: CategoryPoints;
+  environment: CategoryPoints;
 }
 
 export default function ScanResultScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>('health');
 
   // Parse the result data from params
   const result: ScanResultData = params.result ? JSON.parse(params.result as string) : null;
@@ -39,6 +47,9 @@ export default function ScanResultScreen() {
       </View>
     );
   }
+
+  // Get active category data
+  const activeData = activeTab === 'health' ? result.health : result.environment;
 
   return (
     <View className="flex-1 bg-[#FAF9F7]">
@@ -58,19 +69,25 @@ export default function ScanResultScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}>
-        {/* Score Cards */}
-        <ScoreCardsRow environmentScore={result.planetScore} healthScore={result.healthScore} />
+        {/* Score Cards as Tabs */}
+        <ScoreCardsRow
+          healthScore={result.healthScore}
+          environmentScore={result.planetScore}
+          isDashboard={false}
+          activeTab={activeTab}
+          onHealthPress={() => setActiveTab('health')}
+          onEnvironmentPress={() => setActiveTab('environment')}
+        />
 
-        {/* Overview Card */}
-        <View className="mx-5 mb-6 rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 20 }}>
-          <Text className="mb-2 text-xl font-bold text-black">Here's an overview.</Text>
-
-          {result.goodPoints.length > 0 && (
-            <View style={{ gap: 12 }}>
+        {/* Category Content */}
+        <View className="mx-5" style={{ gap: 16 }}>
+          {/* Good Points Card */}
+          {activeData.good.length > 0 && (
+            <View className="rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 12 }}>
               <View className="self-start rounded-xl bg-[#5DB075] px-4 py-1.5">
                 <Text className="text-[13px] font-bold text-white">Good</Text>
               </View>
-              {result.goodPoints.map((point: string, index: number) => (
+              {activeData.good.map((point: string, index: number) => (
                 <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
                   • {point}
                 </Text>
@@ -78,12 +95,13 @@ export default function ScanResultScreen() {
             </View>
           )}
 
-          {result.okayPoints.length > 0 && (
-            <View style={{ gap: 12 }}>
+          {/* Okay Points Card */}
+          {activeData.okay.length > 0 && (
+            <View className="rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 12 }}>
               <View className="self-start rounded-xl bg-[#F0C674] px-4 py-1.5">
                 <Text className="text-[13px] font-bold text-white">Okay</Text>
               </View>
-              {result.okayPoints.map((point: string, index: number) => (
+              {activeData.okay.map((point: string, index: number) => (
                 <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
                   • {point}
                 </Text>
@@ -91,12 +109,13 @@ export default function ScanResultScreen() {
             </View>
           )}
 
-          {result.badPoints.length > 0 && (
-            <View style={{ gap: 12 }}>
+          {/* Bad Points Card */}
+          {activeData.bad.length > 0 && (
+            <View className="rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 12 }}>
               <View className="self-start rounded-xl bg-[#E07A7A] px-4 py-1.5">
                 <Text className="text-[13px] font-bold text-white">Bad</Text>
               </View>
-              {result.badPoints.map((point: string, index: number) => (
+              {activeData.bad.map((point: string, index: number) => (
                 <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
                   • {point}
                 </Text>
@@ -106,7 +125,7 @@ export default function ScanResultScreen() {
         </View>
 
         {/* Action Button */}
-        <View className="mb-5 px-5">
+        <View className="mb-5 mt-6 px-5">
           <TouchableOpacity
             className="items-center rounded-3xl bg-[#5DB075] py-4"
             onPress={() => router.push('/scan')}>

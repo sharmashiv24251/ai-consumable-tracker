@@ -14,34 +14,23 @@ import type { ScanResult } from '../types';
 
 type ScanState = 'idle' | 'processing';
 
-// Helper to transform new API format to old UI format
+// Helper to transform API format to UI format
 function transformScanResult(apiResult: ScanResult, imageUri: string) {
-  // Combine all good points from health and environment
-  const goodPoints = [
-    ...apiResult.health.good.map((p) => p.text),
-    ...apiResult.environment.good.map((p) => p.text),
-  ];
-
-  // Combine all ok points
-  const okayPoints = [
-    ...apiResult.health.ok.map((p) => p.text),
-    ...apiResult.environment.ok.map((p) => p.text),
-  ];
-
-  // Combine all bad points
-  const badPoints = [
-    ...apiResult.health.bad.map((p) => p.text),
-    ...apiResult.environment.bad.map((p) => p.text),
-  ];
-
   return {
     id: apiResult.scanId,
     productName: 'Scanned Product', // Default name, can be enhanced later
     healthScore: apiResult.scores.health,
     planetScore: apiResult.scores.environment,
-    goodPoints,
-    okayPoints,
-    badPoints,
+    health: {
+      good: apiResult.health.good.map((p) => p.text),
+      okay: apiResult.health.ok.map((p) => p.text),
+      bad: apiResult.health.bad.map((p) => p.text),
+    },
+    environment: {
+      good: apiResult.environment.good.map((p) => p.text),
+      okay: apiResult.environment.ok.map((p) => p.text),
+      bad: apiResult.environment.bad.map((p) => p.text),
+    },
     timestamp: Date.now(),
     imageUri,
   };

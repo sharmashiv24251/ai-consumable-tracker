@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, Animated } from 'react-native';
+import { View, Text, Image, Animated, TouchableOpacity } from 'react-native';
 
 interface ScoreCardsRowProps {
   environmentScore: number;
   healthScore: number;
+  isDashboard?: boolean;
+  onHealthPress?: () => void;
+  onEnvironmentPress?: () => void;
+  activeTab?: 'health' | 'environment';
 }
 
 const CARD_CONFIG = {
@@ -23,7 +27,14 @@ const CARD_CONFIG = {
   },
 };
 
-export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCardsRowProps) {
+export default function ScoreCardsRow({
+  environmentScore,
+  healthScore,
+  isDashboard = true,
+  onHealthPress,
+  onEnvironmentPress,
+  activeTab,
+}: ScoreCardsRowProps) {
   // Animated values for each score
   const healthAnimatedValue = useRef(new Animated.Value(0)).current;
   const environmentAnimatedValue = useRef(new Animated.Value(0)).current;
@@ -78,8 +89,10 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
     animatedValue: Animated.Value
   ) => {
     const config = CARD_CONFIG[type];
+    const isActive = !isDashboard && activeTab === type;
+    const onPress = type === 'health' ? onHealthPress : onEnvironmentPress;
 
-    return (
+    const cardContent = (
       <View
         className="flex-1 rounded-2xl p-4"
         style={{ backgroundColor: config.backgroundColor, minHeight: 140 }}>
@@ -141,8 +154,39 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
             />
           )}
         </View>
+
+        {/* Active Tab Indicator */}
+        {isActive && (
+          <View className="absolute bottom-0 left-1/2 -ml-2">
+            <View
+              style={{
+                width: 0,
+                height: 0,
+                backgroundColor: 'transparent',
+                borderStyle: 'solid',
+                borderLeftWidth: 8,
+                borderRightWidth: 8,
+                borderTopWidth: 8,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderTopColor: config.backgroundColor,
+              }}
+            />
+          </View>
+        )}
       </View>
     );
+
+    // Wrap in TouchableOpacity if not dashboard and has onPress handler
+    if (!isDashboard && onPress) {
+      return (
+        <TouchableOpacity className="flex-1" onPress={onPress} activeOpacity={0.8}>
+          {cardContent}
+        </TouchableOpacity>
+      );
+    }
+
+    return <View className="flex-1">{cardContent}</View>;
   };
 
   return (

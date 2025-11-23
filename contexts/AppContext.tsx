@@ -23,14 +23,19 @@ export interface ImpactItem {
   timestamp: number;
 }
 
+export interface CategoryPoints {
+  good: string[];
+  okay: string[];
+  bad: string[];
+}
+
 export interface ScanResult {
   id: string;
   productName: string;
   healthScore: number;
   planetScore: number;
-  goodPoints: string[];
-  okayPoints: string[];
-  badPoints: string[];
+  health: CategoryPoints;
+  environment: CategoryPoints;
   timestamp: number;
   imageUri?: string;
 }

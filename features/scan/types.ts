@@ -37,16 +37,24 @@ export interface ScanUploadPayload {
 }
 
 /**
- * Extended scan result for local storage (backward compatible)
+ * Category points structure for UI display
+ */
+export interface CategoryPoints {
+  good: string[];
+  okay: string[];
+  bad: string[];
+}
+
+/**
+ * Extended scan result for local storage
  */
 export interface LocalScanResult {
   id: string;
   productName: string;
   healthScore: number;
   planetScore: number;
-  goodPoints: string[];
-  okayPoints: string[];
-  badPoints: string[];
+  health: CategoryPoints;
+  environment: CategoryPoints;
   timestamp: number;
   imageUri?: string;
 }
