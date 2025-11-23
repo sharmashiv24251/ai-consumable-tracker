@@ -85,7 +85,9 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
         style={{ backgroundColor: config.backgroundColor, minHeight: 140 }}>
         <View className="relative flex-1 flex-col justify-between">
           {/* Title at top */}
-          <Text className="text-sm font-semibold" style={{ color: config.textColor }}>
+          <Text
+            className=" max-xxs:text-xs text-sm font-semibold"
+            style={{ color: config.textColor }}>
             {config.title}
           </Text>
 
@@ -106,7 +108,9 @@ export default function ScoreCardsRow({ environmentScore, healthScore }: ScoreCa
             </View>
 
             {/* Progress Bar */}
-            <View className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
+            <View
+              className="h-2 w-full overflow-hidden rounded-full"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
               <Animated.View
                 style={{
                   height: '100%',
