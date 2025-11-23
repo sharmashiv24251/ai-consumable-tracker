@@ -51,38 +51,7 @@ export default function DashboardHome() {
         ) : (
           <>
             <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
-
             <TrendsChart />
-
-            <View className="mx-6 mb-4 max-h-16 overflow-hidden rounded-xl bg-white p-5 shadow-sm">
-              <View className="flex-row items-center ">
-                <View className="absolute h-[60px] w-[60px] translate-y-[15px] items-center justify-center rounded-full bg-[#E8F5E9]">
-                  <Text style={{ fontSize: 30 }}>👋</Text>
-                </View>
-                <Text
-                  numberOfLines={1}
-                  className="flex-1 pl-20 text-base font-semibold leading-6 text-black">
-                  You could try using a reusable water bottle!
-                </Text>
-              </View>
-            </View>
-
-            <View className="relative mx-6 mb-4 overflow-hidden rounded-xl bg-[#E8F4F8] p-6">
-              <Text className="mb-2 text-lg font-bold text-black">Today's Green Tip</Text>
-              <Text className="text-base font-semibold text-black">Buy organic produce</Text>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&h=200&fit=crop',
-                }}
-                className="absolute bottom-4 right-4 h-20 w-20 rounded-full"
-              />
-            </View>
-
-            <View className="mx-6 mb-6 rounded-xl bg-white p-6 shadow-sm">
-              <Text className="text-center text-lg font-bold text-black">
-                Broccoli is the New Superfood
-              </Text>
-            </View>
           </>
         )}
       </ScrollView>
