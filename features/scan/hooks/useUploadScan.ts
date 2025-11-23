@@ -20,9 +20,9 @@ export function useUploadScan() {
     onSuccess: (data: ScanResult) => {
       console.log('[useUploadScan] Scan successful:', data.scanId);
 
-      // Invalidate scan history to refetch
+      // Invalidate all scan queries to refetch history
       queryClient.invalidateQueries({
-        queryKey: queryKeys.scan.history(),
+        queryKey: queryKeys.scan.all,
       });
 
       // Invalidate dashboard to update scores

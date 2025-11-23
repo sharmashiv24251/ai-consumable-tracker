@@ -3,16 +3,16 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
-import { Camera, X, Upload } from 'lucide-react-native';
+import { Camera, Upload } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
-import { Text, View, TouchableOpacity, Animated, ScrollView, Platform, Image } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { ScoreCardsRow } from '../../../common/components';
+import { useRouter } from 'expo-router';
 import { useUploadScan } from '../hooks/useUploadScan';
 import type { ScanResult } from '../types';
 
-type ScanState = 'idle' | 'processing' | 'result';
+type ScanState = 'idle' | 'processing';
 
 // Helper to transform new API format to old UI format
 function transformScanResult(apiResult: ScanResult, imageUri: string) {
@@ -50,9 +50,9 @@ function transformScanResult(apiResult: ScanResult, imageUri: string) {
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanState, setScanState] = useState<ScanState>('idle');
-  const [result, setResult] = useState<any>(null);
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const { addScanResult, updateScores } = useApp();
@@ -99,13 +99,21 @@ export default function ScanScreen() {
       // Transform to UI format
       const scanResult = transformScanResult(apiResult, imageUri);
 
-      setResult(scanResult);
+      // Save to context
       addScanResult(scanResult);
       updateScores(scanResult.healthScore, scanResult.planetScore);
-      setScanState('result');
 
       if (Platform.OS !== 'web')
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Navigate to result screen
+      setScanState('idle');
+      router.push({
+        pathname: '/scan-result',
+        params: {
+          result: JSON.stringify(scanResult),
+        },
+      });
     } catch (error) {
       console.error('Analysis failed:', error);
       setScanState('idle');
@@ -155,11 +163,6 @@ export default function ScanScreen() {
     }
   };
 
-  const reset = () => {
-    setScanState('idle');
-    setResult(null);
-  };
-
   // Only render camera when screen is focused and in idle state
   const shouldShowCamera = isFocused && scanState === 'idle' && permission?.granted;
 
@@ -188,86 +191,6 @@ export default function ScanScreen() {
             <Text className="text-base font-semibold text-white">Grant Permission</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    );
-  }
-
-  if (scanState === 'result' && result) {
-    return (
-      <View className="flex-1 bg-[#FAF9F7]">
-        <StatusBar style="dark" />
-        <View
-          className="flex-row items-center justify-between px-5 pb-4"
-          style={{ paddingTop: insets.top + 16 }}>
-          <TouchableOpacity onPress={reset} className="h-10 w-10 items-center justify-center">
-            <X size={28} color="#000" />
-          </TouchableOpacity>
-          <Text className="flex-1 text-center text-xl font-bold text-black" numberOfLines={1}>
-            {result.productName}
-          </Text>
-          <View className="h-10 w-10" />
-        </View>
-
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}>
-          {/* Score Cards */}
-          <ScoreCardsRow environmentScore={result.planetScore} healthScore={result.healthScore} />
-
-          {/* Overview Card */}
-          <View className="mx-5 mb-6 rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 20 }}>
-            <Text className="mb-2 text-xl font-bold text-black">Here's an overview.</Text>
-
-            {result.goodPoints.length > 0 && (
-              <View style={{ gap: 12 }}>
-                <View className="self-start rounded-xl bg-[#5DB075] px-4 py-1.5">
-                  <Text className="text-[13px] font-bold text-white">Good</Text>
-                </View>
-                {result.goodPoints.map((point: string, index: number) => (
-                  <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
-                    • {point}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            {result.okayPoints.length > 0 && (
-              <View style={{ gap: 12 }}>
-                <View className="self-start rounded-xl bg-[#F0C674] px-4 py-1.5">
-                  <Text className="text-[13px] font-bold text-white">Okay</Text>
-                </View>
-                {result.okayPoints.map((point: string, index: number) => (
-                  <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
-                    • {point}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            {result.badPoints.length > 0 && (
-              <View style={{ gap: 12 }}>
-                <View className="self-start rounded-xl bg-[#E07A7A] px-4 py-1.5">
-                  <Text className="text-[13px] font-bold text-white">Bad</Text>
-                </View>
-                {result.badPoints.map((point: string, index: number) => (
-                  <Text key={index} className="text-[15px] font-medium leading-[22px] text-black">
-                    • {point}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* Action Button */}
-          <View className="mb-5 px-5">
-            <TouchableOpacity
-              className="items-center rounded-3xl bg-[#5DB075] py-4"
-              onPress={reset}>
-              <Text className="text-[17px] font-semibold text-white">Scan Another</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
       </View>
     );
   }

@@ -50,3 +50,15 @@ export interface LocalScanResult {
   timestamp: number;
   imageUri?: string;
 }
+
+/**
+ * Scan history item for profile/history display
+ */
+export interface ScanHistoryItem {
+  id: string;
+  productName: string;
+  imageUrl: string;
+  scannedAt: string; // ISO date string
+  scores: ScanScores;
+  result: ScanResult; // Full scan result for navigation to details
+}

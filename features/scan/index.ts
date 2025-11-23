@@ -6,8 +6,18 @@
 // Screens
 export { default as ScanScreen } from './screens/ScanScreen';
 
+// Components
+export { default as ScanHistoryItem } from './components/ScanHistoryItem';
+
 // Hooks
 export { useUploadScan } from './hooks/useUploadScan';
+export { useScanHistory } from './hooks/useScanHistory';
 
 // Types
-export type { ScanResult, ScanUploadPayload, ScanScores, ScanCategory } from './types';
+export type {
+  ScanResult,
+  ScanUploadPayload,
+  ScanScores,
+  ScanCategory,
+  ScanHistoryItem as ScanHistoryItemType,
+} from './types';

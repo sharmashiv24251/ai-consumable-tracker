@@ -19,7 +19,9 @@ export const queryKeys = {
   // Scan feature keys
   scan: {
     all: ['scan'] as const,
-    history: () => [...queryKeys.scan.all, 'history'] as const,
+    history: (userId: string, limit?: number) =>
+      [...queryKeys.scan.all, 'history', userId, limit] as const,
+    allHistory: (userId: string) => [...queryKeys.scan.all, 'history', userId, 'all'] as const,
     result: (scanId: string) => [...queryKeys.scan.all, 'result', scanId] as const,
   },
 

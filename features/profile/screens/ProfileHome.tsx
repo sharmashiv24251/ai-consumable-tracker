@@ -1,14 +1,18 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useProfile } from '../hooks/useProfile';
+import { useScanHistory, ScanHistoryItem } from '../../../features/scan';
 import { User, Settings, Award, Calendar } from 'lucide-react-native';
 
 export default function ProfileHome() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const userId = 'user_123'; // In real app, get from auth context
 
   const { data: profile, isLoading, error } = useProfile(userId);
+  const { data: recentScans, isLoading: scansLoading } = useScanHistory(userId, 5);
 
   if (isLoading) {
     return (
@@ -68,6 +72,68 @@ export default function ProfileHome() {
               Member since {new Date(profile.joinedAt).toLocaleDateString()}
             </Text>
           </View>
+        </View>
+
+        {/* Recent Scans Section */}
+        <View className="mx-6 mb-4">
+          <View className="mb-3 flex-row items-center justify-between">
+            <Text className="text-xl font-bold text-black">Recent Scans</Text>
+            {recentScans && recentScans.length > 0 && (
+              <TouchableOpacity onPress={() => router.push('/all-scans')}>
+                <Text className="text-sm font-semibold text-[#5DB075]">View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {scansLoading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator size="small" color="#5DB075" />
+            </View>
+          ) : recentScans && recentScans.length > 0 ? (
+            <View>
+              {recentScans.map((scan) => {
+                // Transform scan history item to result format
+                const resultData = {
+                  productName: scan.productName,
+                  healthScore: scan.scores.health,
+                  planetScore: scan.scores.environment,
+                  goodPoints: [
+                    ...scan.result.health.good.map((p) => p.text),
+                    ...scan.result.environment.good.map((p) => p.text),
+                  ],
+                  okayPoints: [
+                    ...scan.result.health.ok.map((p) => p.text),
+                    ...scan.result.environment.ok.map((p) => p.text),
+                  ],
+                  badPoints: [
+                    ...scan.result.health.bad.map((p) => p.text),
+                    ...scan.result.environment.bad.map((p) => p.text),
+                  ],
+                };
+
+                return (
+                  <ScanHistoryItem
+                    key={scan.id}
+                    item={scan}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/scan-result',
+                        params: {
+                          result: JSON.stringify(resultData),
+                        },
+                      });
+                    }}
+                  />
+                );
+              })}
+            </View>
+          ) : (
+            <View className="rounded-xl bg-white p-6 shadow-sm">
+              <Text className="text-center text-sm text-[#8E8E93]">
+                No scans yet. Start scanning products to see your history!
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Settings Button */}
