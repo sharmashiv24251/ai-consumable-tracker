@@ -8,7 +8,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, TouchableOpacity, Animated, ScrollView, Platform, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { ScoreCard } from '../../../common/components';
+import { ScoreCardsRow } from '../../../common/components';
 import { useUploadScan } from '../hooks/useUploadScan';
 import type { ScanResult } from '../types';
 
@@ -213,8 +213,7 @@ export default function ScanScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}>
           {/* Score Cards */}
-          <ScoreCard type="environment" score={result.planetScore} />
-          <ScoreCard type="health" score={result.healthScore} />
+          <ScoreCardsRow environmentScore={result.planetScore} healthScore={result.healthScore} />
 
           {/* Overview Card */}
           <View className="mx-5 mb-6 rounded-3xl bg-white p-6 shadow-sm" style={{ gap: 20 }}>

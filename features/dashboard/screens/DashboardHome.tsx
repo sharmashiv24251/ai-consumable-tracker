@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, Text, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScoreCard } from '../../../common/components';
+import { ScoreCardsRow } from '../../../common/components';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 export default function DashboardHome() {
@@ -55,10 +55,7 @@ export default function DashboardHome() {
                 <Text className="mt-4 text-base text-gray-500">Loading scores...</Text>
               </View>
             ) : (
-              <>
-                <ScoreCard type="environment" score={environmentScore} />
-                <ScoreCard type="health" score={healthScore} />
-              </>
+              <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
             )}
 
             <View className="mx-6 mb-4 max-h-16 overflow-hidden rounded-xl bg-white p-5 shadow-sm">

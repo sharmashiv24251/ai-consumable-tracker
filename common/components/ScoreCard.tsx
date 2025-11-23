@@ -14,7 +14,7 @@ const CARD_CONFIG = {
     textColor: '#8B4513',
     progressColor: '#8B4513',
     icon: require('../../assets/icons/heart.png'),
-    title: 'Health Score',
+    title: 'Health',
     emoji: '💚',
   },
   environment: {
@@ -22,7 +22,7 @@ const CARD_CONFIG = {
     textColor: '#1E3A1E',
     progressColor: '#1E3A1E',
     icon: require('../../assets/icons/earth.png'),
-    title: 'Environment Score',
+    title: 'Environment',
     emoji: '🌍',
   },
 };
@@ -39,15 +39,11 @@ export default function ScoreCard({ type, score }: ScoreCardProps) {
       style={{ backgroundColor: config.backgroundColor }}>
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <Text
-            className="mb-2 text-lg font-semibold"
-            style={{ color: config.textColor }}>
+          <Text className="mb-2 text-lg font-semibold" style={{ color: config.textColor }}>
             {config.title}
           </Text>
 
-          <Text
-            className="text-[72px] font-extrabold"
-            style={{ color: config.textColor }}>
+          <Text className="text-[72px] font-extrabold" style={{ color: config.textColor }}>
             {score}
           </Text>
 
@@ -68,7 +64,7 @@ export default function ScoreCard({ type, score }: ScoreCardProps) {
           {config.icon ? (
             <Image
               source={config.icon}
-              style={{height:"100%" , width:"100%"}}
+              style={{ height: '100%', width: '100%' }}
               resizeMode="contain"
             />
           ) : (
