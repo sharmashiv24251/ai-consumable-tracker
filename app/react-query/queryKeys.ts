@@ -40,4 +40,11 @@ export const queryKeys = {
     user: (userId: string) => [...queryKeys.profile.all, 'user', userId] as const,
     settings: (userId: string) => [...queryKeys.profile.all, 'settings', userId] as const,
   },
+
+  // Auth feature keys
+  auth: {
+    all: ['auth'] as const,
+    user: () => [...queryKeys.auth.all, 'user'] as const,
+    session: () => [...queryKeys.auth.all, 'session'] as const,
+  },
 };

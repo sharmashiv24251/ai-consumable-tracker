@@ -39,11 +39,11 @@ export default function TrendsChart() {
   const prepareChartData = () => {
     const labels = trendsData.dataPoints.map((point) => point.month);
 
-    const datasets: Array<{
+    const datasets: {
       data: number[];
       color?: (opacity?: number) => string;
       strokeWidth?: number;
-    }> = [];
+    }[] = [];
 
     if (activeFilter === 'all' || activeFilter === 'health') {
       datasets.push({

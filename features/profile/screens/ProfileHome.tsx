@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useProfile } from '../hooks/useProfile';
 import { useScanHistory, ScanHistoryItem } from '../../../features/scan';
-import { User, Settings, Award, Calendar } from 'lucide-react-native';
+import { useLogout } from '../../../features/auth/hooks/useLogout';
+import { User, Settings, Award, Calendar, LogOut } from 'lucide-react-native';
 
 export default function ProfileHome() {
   const insets = useSafeAreaInsets();
@@ -13,6 +14,7 @@ export default function ProfileHome() {
 
   const { data: profile, isLoading, error } = useProfile(userId);
   const { data: recentScans, isLoading: scansLoading } = useScanHistory(userId, 5);
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
 
   if (isLoading) {
     return (
@@ -135,13 +137,26 @@ export default function ProfileHome() {
         </View>
 
         {/* Settings Button */}
-        <View className="mx-6">
+        <View className="mx-6 mb-4">
           <TouchableOpacity className="flex-row items-center justify-between rounded-2xl bg-white p-6 shadow-sm">
             <View className="flex-row items-center">
               <Settings size={24} color="#5DB075" />
               <Text className="ml-3 text-lg font-semibold text-black">Settings</Text>
             </View>
             <Text className="text-2xl text-gray-400">›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Out Button */}
+        <View className="mx-6">
+          <TouchableOpacity
+            className="flex-row items-center justify-center rounded-2xl border-2 border-red-500 bg-white p-6"
+            onPress={() => logout()}
+            disabled={isLoggingOut}>
+            <LogOut size={24} color="#EF4444" />
+            <Text className="ml-3 text-lg font-semibold text-red-500">
+              {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
