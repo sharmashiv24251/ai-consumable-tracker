@@ -3,9 +3,9 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
-import { Camera, Zap, ZapOff, X, Image as ImageIcon, ScanBarcode } from 'lucide-react-native';
+import { Camera, Zap, ZapOff, X, Image as ImageIcon, ScanBarcode, Info } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
-import { Text, View, TouchableOpacity, Animated, Platform, StyleSheet } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Platform, StyleSheet, Modal } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -14,6 +14,7 @@ import { useUploadScan } from '../hooks/useUploadScan';
 import type { ScanResult } from '../types';
 
 type ScanState = 'idle' | 'processing';
+type ScanMode = 'general' | 'barcode';
 
 // Helper to transform API format to UI format
 function transformScanResult(apiResult: ScanResult, imageUri: string) {
@@ -44,7 +45,8 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [isFlashOn, setIsFlashOn] = useState(false);
-  const [scansLeft] = useState(2); // TODO: Connect to actual subscription/limit logic
+  const [scanMode, setScanMode] = useState<ScanMode>('general');
+  const [showModeInfo, setShowModeInfo] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const { addScanResult, updateScores } = useApp();
@@ -86,6 +88,7 @@ export default function ScanScreen() {
       // Call mock API via React Query mutation
       const apiResult = await uploadMutation.mutateAsync({
         imageUri,
+        mode: scanMode,
       });
 
       // Transform to UI format
@@ -163,6 +166,21 @@ export default function ScanScreen() {
     setIsFlashOn(!isFlashOn);
   };
 
+  const toggleMode = () => {
+    setScanMode((prev) => (prev === 'general' ? 'barcode' : 'general'));
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const showModeInfoModal = () => {
+    setShowModeInfo(true);
+  };
+
+  const closeModeInfoModal = () => {
+    setShowModeInfo(false);
+  };
+
   // Only render camera when screen is focused and in idle state
   const shouldShowCamera = isFocused && scanState === 'idle' && permission?.granted;
 
@@ -233,10 +251,13 @@ export default function ScanScreen() {
                   )}
                 </TouchableOpacity>
 
-                {/* Center: Scans left indicator */}
-                <View style={styles.scanIndicator}>
-                  <Text style={styles.scanIndicatorText}>{scansLeft} scans left</Text>
-                </View>
+                {/* Center: Mode indicator */}
+                <TouchableOpacity onPress={showModeInfoModal} style={styles.scanIndicator}>
+                  <Text style={styles.scanIndicatorText}>
+                    {scanMode === 'general' ? 'general' : 'barcode'}
+                  </Text>
+                  <Info size={16} color="#FFFFFF" strokeWidth={2} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
 
                 {/* Right: Close button */}
                 <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
@@ -382,7 +403,12 @@ export default function ScanScreen() {
                 </TouchableOpacity>
 
                 {/* Right: Barcode button */}
-                <TouchableOpacity style={styles.smallCircle}>
+                <TouchableOpacity
+                  style={[
+                    styles.smallCircle,
+                    scanMode === 'barcode' && { backgroundColor: 'rgba(52, 199, 89, 0.5)' },
+                  ]}
+                  onPress={toggleMode}>
                   <ScanBarcode size={26} color="#FFFFFF" strokeWidth={2} />
                 </TouchableOpacity>
               </View>
@@ -394,6 +420,50 @@ export default function ScanScreen() {
           <Text style={{ color: 'white' }}>Camera paused</Text>
         </View>
       )}
+
+      {/* Mode Info Modal */}
+      <Modal
+        visible={showModeInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={closeModeInfoModal}>
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={80} tint="dark" style={styles.modalBlur}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Scan Modes</Text>
+                <TouchableOpacity onPress={closeModeInfoModal}>
+                  <X size={24} color="#000" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modeSection}>
+                <View style={styles.modeBadge}>
+                  <Text style={styles.modeBadgeText}>General Mode</Text>
+                </View>
+                <Text style={styles.modeDescription}>
+                  Uses AI to analyze product images. Provides quick results but may be less accurate for
+                  packaged products.
+                </Text>
+              </View>
+
+              <View style={styles.modeSection}>
+                <View style={[styles.modeBadge, { backgroundColor: '#34C759' }]}>
+                  <Text style={styles.modeBadgeText}>Barcode Mode</Text>
+                </View>
+                <Text style={styles.modeDescription}>
+                  Scans product barcodes to fetch precise data from databases. More accurate for packaged
+                  products with barcodes.
+                </Text>
+              </View>
+
+              <TouchableOpacity style={styles.modalButton} onPress={closeModeInfoModal}>
+                <Text style={styles.modalButtonText}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -445,6 +515,8 @@ const styles = StyleSheet.create({
   },
   iconButton: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center' },
   scanIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: 12,
@@ -489,4 +561,66 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   shutterInner: { height: 64, width: 64, borderRadius: 32, backgroundColor: 'white' },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalBlur: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    margin: 20,
+    maxWidth: 400,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    gap: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+  },
+  modeSection: {
+    gap: 8,
+  },
+  modeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#8E8E93',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  modeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modeDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#3C3C43',
+  },
+  modalButton: {
+    backgroundColor: '#34C759',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

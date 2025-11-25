@@ -20,6 +20,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 92, environment: 88 },
     result: {
       scanId: 'history_001',
+      mode: 'general',
       scores: { health: 92, environment: 88 },
       health: {
         good: [
@@ -48,6 +49,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 78, environment: 72 },
     result: {
       scanId: 'history_002',
+      mode: 'general',
       scores: { health: 78, environment: 72 },
       health: {
         good: [
@@ -72,6 +74,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 85, environment: 65 },
     result: {
       scanId: 'history_003',
+      mode: 'general',
       scores: { health: 85, environment: 65 },
       health: {
         good: [
@@ -97,6 +100,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 88, environment: 82 },
     result: {
       scanId: 'history_004',
+      mode: 'general',
       scores: { health: 88, environment: 82 },
       health: {
         good: [
@@ -125,6 +129,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 82, environment: 70 },
     result: {
       scanId: 'history_005',
+      mode: 'general',
       scores: { health: 82, environment: 70 },
       health: {
         good: [
@@ -150,6 +155,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 75, environment: 68 },
     result: {
       scanId: 'history_006',
+      mode: 'general',
       scores: { health: 75, environment: 68 },
       health: {
         good: [
@@ -174,6 +180,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 95, environment: 85 },
     result: {
       scanId: 'history_007',
+      mode: 'general',
       scores: { health: 95, environment: 85 },
       health: {
         good: [
@@ -204,6 +211,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 83, environment: 75 },
     result: {
       scanId: 'history_008',
+      mode: 'general',
       scores: { health: 83, environment: 75 },
       health: {
         good: [

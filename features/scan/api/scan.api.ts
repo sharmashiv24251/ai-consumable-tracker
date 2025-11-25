@@ -17,6 +17,7 @@ import type { ScanResult, ScanUploadPayload } from '../types';
 const MOCK_SCAN_RESPONSES: ScanResult[] = [
   {
     scanId: 'scan_001',
+    mode: 'general',
     scores: {
       health: 85,
       environment: 72,
@@ -50,6 +51,7 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
   },
   {
     scanId: 'scan_002',
+    mode: 'general',
     scores: {
       health: 92,
       environment: 88,
@@ -76,6 +78,7 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
   },
   {
     scanId: 'scan_003',
+    mode: 'general',
     scores: {
       health: 65,
       environment: 58,
@@ -113,16 +116,17 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
  * @param payload - Image data and optional product name
  */
 export async function uploadScan(payload: ScanUploadPayload): Promise<ScanResult> {
-  console.log('[Scan API] Uploading image for analysis...');
+  console.log('[Scan API] Uploading image for analysis...', { mode: payload.mode || 'general' });
 
   // Randomly select a mock response
   const mockResponse =
     MOCK_SCAN_RESPONSES[Math.floor(Math.random() * MOCK_SCAN_RESPONSES.length)];
 
-  // Generate unique scan ID
+  // Generate unique scan ID and use mode from payload
   const scanResult: ScanResult = {
     ...mockResponse,
     scanId: `scan_${Date.now()}`,
+    mode: payload.mode || 'general', // Use mode from payload, default to 'general'
   };
 
   // Simulate network + processing delay
