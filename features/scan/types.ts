@@ -27,6 +27,7 @@ export interface ScanResult {
   scores: ScanScores;
   scanId: string;
   mode: 'general' | 'barcode';
+  barcodeData?: string | null;
 }
 
 /**
@@ -36,6 +37,7 @@ export interface ScanUploadPayload {
   imageUri: string;
   productName?: string;
   mode?: 'general' | 'barcode';
+  barcodeData?: string | null;
 }
 
 /**

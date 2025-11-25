@@ -116,7 +116,10 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
  * @param payload - Image data and optional product name
  */
 export async function uploadScan(payload: ScanUploadPayload): Promise<ScanResult> {
-  console.log('[Scan API] Uploading image for analysis...', { mode: payload.mode || 'general' });
+  console.log('[Scan API] Uploading image for analysis...', {
+    mode: payload.mode || 'general',
+    barcodeData: payload.barcodeData || null,
+  });
 
   // Randomly select a mock response
   const mockResponse =
@@ -127,6 +130,7 @@ export async function uploadScan(payload: ScanUploadPayload): Promise<ScanResult
     ...mockResponse,
     scanId: `scan_${Date.now()}`,
     mode: payload.mode || 'general', // Use mode from payload, default to 'general'
+    barcodeData: payload.barcodeData || null, // Include barcode data if provided
   };
 
   // Simulate network + processing delay

@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Camera, Zap, ZapOff, X, Image as ImageIcon, ScanBarcode, Info } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, TouchableOpacity, Animated, Platform, StyleSheet, Modal } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -47,8 +48,11 @@ export default function ScanScreen() {
   const [isFlashOn, setIsFlashOn] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>('general');
   const [showModeInfo, setShowModeInfo] = useState(false);
+  const [barcodeData, setBarcodeData] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(0);
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const isProcessingBarcodeRef = useRef(false); // Prevent multiple barcode scans
   const { addScanResult, updateScores } = useApp();
 
   // React Query mutation hook
@@ -61,6 +65,7 @@ export default function ScanScreen() {
         stopPulse();
         setScanState('idle');
       }
+      isProcessingBarcodeRef.current = false; // Reset barcode processing flag
     }
   }, [isFocused, scanState]);
 
@@ -89,6 +94,7 @@ export default function ScanScreen() {
       const apiResult = await uploadMutation.mutateAsync({
         imageUri,
         mode: scanMode,
+        barcodeData: scanMode === 'barcode' ? barcodeData : null,
       });
 
       // Transform to UI format
@@ -103,6 +109,8 @@ export default function ScanScreen() {
 
       // Navigate to result screen
       setScanState('idle');
+      setBarcodeData(null); // Clear barcode data after scan
+      isProcessingBarcodeRef.current = false; // Reset barcode processing flag
       router.push({
         pathname: '/scan-result',
         params: {
@@ -112,6 +120,7 @@ export default function ScanScreen() {
     } catch (error) {
       console.error('Analysis failed:', error);
       setScanState('idle');
+      isProcessingBarcodeRef.current = false; // Reset barcode processing flag
       if (Platform.OS !== 'web')
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
@@ -167,7 +176,14 @@ export default function ScanScreen() {
   };
 
   const toggleMode = () => {
-    setScanMode((prev) => (prev === 'general' ? 'barcode' : 'general'));
+    setScanMode((prev) => {
+      const newMode = prev === 'general' ? 'barcode' : 'general';
+      // Clear barcode data when switching to general mode
+      if (newMode === 'general') {
+        setBarcodeData(null);
+      }
+      return newMode;
+    });
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -180,6 +196,39 @@ export default function ScanScreen() {
   const closeModeInfoModal = () => {
     setShowModeInfo(false);
   };
+
+  const handleBarcodeScanned = (scanningResult: { type: string; data: string }) => {
+    // Only process if in idle state and not already processing a barcode
+    if (scanState !== 'idle' || isProcessingBarcodeRef.current) return;
+
+    console.log('[Barcode Scanned]', scanningResult);
+
+    // Mark as processing to prevent multiple scans
+    isProcessingBarcodeRef.current = true;
+
+    // Automatically switch to barcode mode
+    setScanMode('barcode');
+    setBarcodeData(scanningResult.data);
+
+    // Provide haptic feedback
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    // Trigger scan immediately (no setTimeout to avoid camera unmounting race condition)
+    if (cameraRef.current) {
+      takePicture();
+    }
+  };
+
+  // Pinch-to-zoom gesture
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((event) => {
+      const velocity = event.velocity / 20;
+      const newZoom = Math.max(Math.min(zoom + velocity * 0.05, 1), 0.1);
+      setZoom(newZoom);
+    })
+    .runOnJS(true);
 
   // Only render camera when screen is focused and in idle state
   const shouldShowCamera = isFocused && scanState === 'idle' && permission?.granted;
@@ -229,192 +278,209 @@ export default function ScanScreen() {
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       <StatusBar style="light" />
       {shouldShowCamera ? (
-        <CameraView
-          ref={cameraRef}
-          style={{ flex: 1 }}
-          facing={'back' as CameraType}
-          enableTorch={isFlashOn}>
-          {/* Full-screen overlay with center cutout effect */}
-          <View style={{ flex: 1 }}>
-            {/* Top blur overlay with controls */}
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={[styles.topGradient, { paddingTop: insets.top, zIndex: 20 }]}>
-              <View style={styles.topRow}>
-                {/* Left: Flash button */}
-                <TouchableOpacity onPress={toggleFlash} style={styles.iconButton}>
-                  {isFlashOn ? (
-                    <Zap size={24} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-                  ) : (
-                    <ZapOff size={24} color="#FFFFFF" strokeWidth={2} />
-                  )}
-                </TouchableOpacity>
+        <GestureDetector gesture={pinchGesture}>
+          <CameraView
+            ref={cameraRef}
+            style={{ flex: 1 }}
+            facing={'back' as CameraType}
+            enableTorch={isFlashOn}
+            zoom={zoom}
+            onBarcodeScanned={handleBarcodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: [
+                'qr',
+                'ean13',
+                'ean8',
+                'upc_a',
+                'upc_e',
+                'code128',
+                'code39',
+                'code93',
+                'codabar',
+              ],
+            }}>
+            {/* Full-screen overlay with center cutout effect */}
+            <View style={{ flex: 1 }}>
+              {/* Top blur overlay with controls */}
+              <BlurView
+                intensity={80}
+                tint="dark"
+                style={[styles.topGradient, { paddingTop: insets.top, zIndex: 20 }]}>
+                <View style={styles.topRow}>
+                  {/* Left: Flash button */}
+                  <TouchableOpacity onPress={toggleFlash} style={styles.iconButton}>
+                    {isFlashOn ? (
+                      <Zap size={24} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
+                    ) : (
+                      <ZapOff size={24} color="#FFFFFF" strokeWidth={2} />
+                    )}
+                  </TouchableOpacity>
 
-                {/* Center: Mode indicator */}
-                <TouchableOpacity onPress={showModeInfoModal} style={styles.scanIndicator}>
-                  <Text style={styles.scanIndicatorText}>
-                    {scanMode === 'general' ? 'general' : 'barcode'}
-                  </Text>
-                  <Info size={16} color="#FFFFFF" strokeWidth={2} style={{ marginLeft: 4 }} />
-                </TouchableOpacity>
+                  {/* Center: Mode indicator */}
+                  <TouchableOpacity onPress={showModeInfoModal} style={styles.scanIndicator}>
+                    <Text style={styles.scanIndicatorText}>
+                      {scanMode === 'general' ? 'general' : 'barcode'}
+                    </Text>
+                    <Info size={16} color="#FFFFFF" strokeWidth={2} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
 
-                {/* Right: Close button */}
-                <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
-                  <X size={28} color="#FFFFFF" strokeWidth={2} />
-                </TouchableOpacity>
+                  {/* Right: Close button */}
+                  <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
+                    <X size={28} color="#FFFFFF" strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+
+              {/* Scan area with rounded corners and corner indicators */}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.scanArea,
+                  {
+                    top: insets.top + 100,
+                    left: 40,
+                    right: 40,
+                    bottom: 180 + (insets.bottom || 0),
+                    zIndex: 5,
+                  },
+                ]}>
+                {/* Subtle rounded border */}
+                <View style={styles.scanBorder} />
+
+                {/* Corner indicators - Top Left */}
+                <View style={[styles.corner, { left: 4, top: 4 }]}>
+                  <View
+                    style={{ height: 32, width: 2, borderRadius: 999, backgroundColor: '#fff' }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      height: 2,
+                      width: 32,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                </View>
+
+                {/* Top Right */}
+                <View style={[styles.corner, { right: 4, top: 4 }]}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      height: 32,
+                      width: 2,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      height: 2,
+                      width: 32,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                </View>
+
+                {/* Bottom Left */}
+                <View style={[styles.corner, { left: 4, bottom: 4 }]}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      height: 32,
+                      width: 2,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      height: 2,
+                      width: 32,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                </View>
+
+                {/* Bottom Right */}
+                <View style={[styles.corner, { right: 4, bottom: 4 }]}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      height: 32,
+                      width: 2,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      height: 2,
+                      width: 32,
+                      borderRadius: 999,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                </View>
               </View>
-            </BlurView>
 
-            {/* Scan area with rounded corners and corner indicators */}
-            <View
-              pointerEvents="none"
-              style={[
-                styles.scanArea,
-                {
-                  top: insets.top + 100,
-                  left: 40,
-                  right: 40,
-                  bottom: 180 + (insets.bottom || 0),
-                  zIndex: 5,
-                },
-              ]}>
-              {/* Subtle rounded border */}
-              <View style={styles.scanBorder} />
+              {/* Bottom blur overlay with controls */}
+              <BlurView
+                intensity={80}
+                tint="dark"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  paddingBottom: Math.max(insets.bottom || 0, 20) + 10,
+                  zIndex: 20,
+                }}>
+                <View style={styles.bottomRow}>
+                  {/* Left: Gallery button */}
+                  <TouchableOpacity style={styles.smallCircle} onPress={pickImage}>
+                    <ImageIcon size={26} color="#FFFFFF" strokeWidth={2} />
+                  </TouchableOpacity>
 
-              {/* Corner indicators - Top Left */}
-              <View style={[styles.corner, { left: 4, top: 4 }]}>
-                <View
-                  style={{ height: 32, width: 2, borderRadius: 999, backgroundColor: '#fff' }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    height: 2,
-                    width: 32,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              </View>
+                  {/* Center: Shutter button */}
+                  <TouchableOpacity style={styles.shutterOuter} onPress={takePicture}>
+                    <View style={styles.shutterInner} />
+                  </TouchableOpacity>
 
-              {/* Top Right */}
-              <View style={[styles.corner, { right: 4, top: 4 }]}>
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    height: 32,
-                    width: 2,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    height: 2,
-                    width: 32,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              </View>
-
-              {/* Bottom Left */}
-              <View style={[styles.corner, { left: 4, bottom: 4 }]}>
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    height: 32,
-                    width: 2,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    height: 2,
-                    width: 32,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              </View>
-
-              {/* Bottom Right */}
-              <View style={[styles.corner, { right: 4, bottom: 4 }]}>
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    height: 32,
-                    width: 2,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    height: 2,
-                    width: 32,
-                    borderRadius: 999,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              </View>
+                  {/* Right: Barcode button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.smallCircle,
+                      scanMode === 'barcode' && { backgroundColor: 'rgba(52, 199, 89, 0.5)' },
+                    ]}
+                    onPress={toggleMode}>
+                    <ScanBarcode size={26} color="#FFFFFF" strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
             </View>
-
-            {/* Bottom blur overlay with controls */}
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                paddingBottom: Math.max(insets.bottom || 0, 20) + 10,
-                zIndex: 20,
-              }}>
-              <View style={styles.bottomRow}>
-                {/* Left: Gallery button */}
-                <TouchableOpacity style={styles.smallCircle} onPress={pickImage}>
-                  <ImageIcon size={26} color="#FFFFFF" strokeWidth={2} />
-                </TouchableOpacity>
-
-                {/* Center: Shutter button */}
-                <TouchableOpacity style={styles.shutterOuter} onPress={takePicture}>
-                  <View style={styles.shutterInner} />
-                </TouchableOpacity>
-
-                {/* Right: Barcode button */}
-                <TouchableOpacity
-                  style={[
-                    styles.smallCircle,
-                    scanMode === 'barcode' && { backgroundColor: 'rgba(52, 199, 89, 0.5)' },
-                  ]}
-                  onPress={toggleMode}>
-                  <ScanBarcode size={26} color="#FFFFFF" strokeWidth={2} />
-                </TouchableOpacity>
-              </View>
-            </BlurView>
-          </View>
-        </CameraView>
+          </CameraView>
+        </GestureDetector>
       ) : (
         <View style={styles.centerFill}>
           <Text style={{ color: 'white' }}>Camera paused</Text>
@@ -442,8 +508,8 @@ export default function ScanScreen() {
                   <Text style={styles.modeBadgeText}>General Mode</Text>
                 </View>
                 <Text style={styles.modeDescription}>
-                  Uses AI to analyze product images. Provides quick results but may be less accurate for
-                  packaged products.
+                  Uses AI to analyze product images. Provides quick results but may be less accurate
+                  for packaged products.
                 </Text>
               </View>
 
@@ -452,8 +518,8 @@ export default function ScanScreen() {
                   <Text style={styles.modeBadgeText}>Barcode Mode</Text>
                 </View>
                 <Text style={styles.modeDescription}>
-                  Scans product barcodes to fetch precise data from databases. More accurate for packaged
-                  products with barcodes.
+                  Scans product barcodes to fetch precise data from databases. More accurate for
+                  packaged products with barcodes.
                 </Text>
               </View>
 
