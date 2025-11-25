@@ -42,6 +42,7 @@ export default function TabLayout() {
         options={{
           title: 'Scan',
           tabBarIcon: ({ color }) => <Scan color={color} size={24} />,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen

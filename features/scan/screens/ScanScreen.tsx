@@ -3,9 +3,10 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
-import { Camera, Upload } from 'lucide-react-native';
+import { Camera, Zap, ZapOff, X, Image as ImageIcon, ScanBarcode } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
-import { Text, View, TouchableOpacity, Animated, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Platform, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -18,7 +19,7 @@ type ScanState = 'idle' | 'processing';
 function transformScanResult(apiResult: ScanResult, imageUri: string) {
   return {
     id: apiResult.scanId,
-    productName: 'Scanned Product', // Default name, can be enhanced later
+    productName: 'Scanned Product',
     healthScore: apiResult.scores.health,
     planetScore: apiResult.scores.environment,
     health: {
@@ -42,6 +43,8 @@ export default function ScanScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanState, setScanState] = useState<ScanState>('idle');
+  const [isFlashOn, setIsFlashOn] = useState(false);
+  const [scansLeft] = useState(2); // TODO: Connect to actual subscription/limit logic
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const { addScanResult, updateScores } = useApp();
@@ -152,32 +155,38 @@ export default function ScanScreen() {
     }
   };
 
+  const handleClose = () => {
+    router.back();
+  };
+
+  const toggleFlash = () => {
+    setIsFlashOn(!isFlashOn);
+  };
+
   // Only render camera when screen is focused and in idle state
   const shouldShowCamera = isFocused && scanState === 'idle' && permission?.granted;
 
   if (!permission) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-white">Loading...</Text>
+      <View style={styles.centerFill}>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#FAFAFA]">
-        <View className="items-center px-10" style={{ gap: 20 }}>
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-[#E8F5E9]">
+      <View style={[styles.centerFill, { backgroundColor: '#FAFAFA' }]}>
+        <View style={{ alignItems: 'center', paddingHorizontal: 10, gap: 20 }}>
+          <View style={styles.permissionIcon}>
             <Camera size={48} color="#34C759" strokeWidth={1.5} />
           </View>
-          <Text className="text-center text-2xl font-bold text-black">Camera Access Needed</Text>
-          <Text className="text-center text-base font-medium leading-6 text-[#8E8E93]">
+          <Text style={styles.permissionTitle}>Camera Access Needed</Text>
+          <Text style={styles.permissionText}>
             We need your permission to use the camera to scan product packaging
           </Text>
-          <TouchableOpacity
-            className="mt-3 rounded-xl bg-[#34C759] px-8 py-3.5"
-            onPress={requestPermission}>
-            <Text className="text-base font-semibold text-white">Grant Permission</Text>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -186,51 +195,298 @@ export default function ScanScreen() {
 
   if (scanState === 'processing') {
     return (
-      <View className="flex-1 items-center justify-center bg-[#FAF9F7]" style={{ gap: 16 }}>
+      <View style={[styles.centerFill, { gap: 16, backgroundColor: '#FAF9F7' }]}>
         <StatusBar style="dark" />
         <Animated.View style={{ marginBottom: 20, transform: [{ scale: pulseAnim }] }}>
-          <View className="h-[200px] w-[200px] items-center justify-center rounded-full bg-[#E8F5E9]">
+          <View style={styles.pulseCircle}>
             <Text style={{ fontSize: 100 }}>🔍</Text>
           </View>
         </Animated.View>
-        <Text className="text-base font-medium text-[#8E8E93]">analyzing packaging</Text>
+        <Text style={styles.processingText}>analyzing packaging</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View style={{ flex: 1, backgroundColor: 'black' }}>
       <StatusBar style="light" />
       {shouldShowCamera ? (
-        <CameraView ref={cameraRef} style={{ flex: 1 }} facing={'back' as CameraType}>
-          <View className="flex-1 bg-black/30" style={{ paddingTop: insets.top + 16 }}>
-            <View className="mb-6 px-6">
-              <Text className="text-4xl font-extrabold text-white">Scan</Text>
+        <CameraView
+          ref={cameraRef}
+          style={{ flex: 1 }}
+          facing={'back' as CameraType}
+          enableTorch={isFlashOn}>
+          {/* Full-screen overlay with center cutout effect */}
+          <View style={{ flex: 1 }}>
+            {/* Top blur overlay with controls */}
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={[styles.topGradient, { paddingTop: insets.top, zIndex: 20 }]}>
+              <View style={styles.topRow}>
+                {/* Left: Flash button */}
+                <TouchableOpacity onPress={toggleFlash} style={styles.iconButton}>
+                  {isFlashOn ? (
+                    <Zap size={24} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
+                  ) : (
+                    <ZapOff size={24} color="#FFFFFF" strokeWidth={2} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Center: Scans left indicator */}
+                <View style={styles.scanIndicator}>
+                  <Text style={styles.scanIndicatorText}>{scansLeft} scans left</Text>
+                </View>
+
+                {/* Right: Close button */}
+                <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
+                  <X size={28} color="#FFFFFF" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+
+            {/* Scan area with rounded corners and corner indicators */}
+            <View
+              pointerEvents="none"
+              style={[
+                styles.scanArea,
+                {
+                  top: insets.top + 100,
+                  left: 40,
+                  right: 40,
+                  bottom: 180 + (insets.bottom || 0),
+                  zIndex: 5,
+                },
+              ]}>
+              {/* Subtle rounded border */}
+              <View style={styles.scanBorder} />
+
+              {/* Corner indicators - Top Left */}
+              <View style={[styles.corner, { left: 4, top: 4 }]}>
+                <View
+                  style={{ height: 32, width: 2, borderRadius: 999, backgroundColor: '#fff' }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: 2,
+                    width: 32,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+              </View>
+
+              {/* Top Right */}
+              <View style={[styles.corner, { right: 4, top: 4 }]}>
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    height: 32,
+                    width: 2,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    height: 2,
+                    width: 32,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+              </View>
+
+              {/* Bottom Left */}
+              <View style={[styles.corner, { left: 4, bottom: 4 }]}>
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    height: 32,
+                    width: 2,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    height: 2,
+                    width: 32,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+              </View>
+
+              {/* Bottom Right */}
+              <View style={[styles.corner, { right: 4, bottom: 4 }]}>
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    height: 32,
+                    width: 2,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    height: 2,
+                    width: 32,
+                    borderRadius: 999,
+                    backgroundColor: '#fff',
+                  }}
+                />
+              </View>
             </View>
 
-            <View className="mx-10 my-14 flex-1 rounded-3xl border-[3px] border-dashed border-white" />
+            {/* Bottom blur overlay with controls */}
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                paddingBottom: Math.max(insets.bottom || 0, 20) + 10,
+                zIndex: 20,
+              }}>
+              <View style={styles.bottomRow}>
+                {/* Left: Gallery button */}
+                <TouchableOpacity style={styles.smallCircle} onPress={pickImage}>
+                  <ImageIcon size={26} color="#FFFFFF" strokeWidth={2} />
+                </TouchableOpacity>
 
-            <View className="flex-row items-center justify-between px-10 pb-10">
-              <TouchableOpacity className="items-center" style={{ gap: 4 }} onPress={pickImage}>
-                <Upload size={24} color="#FFFFFF" />
-                <Text className="text-[13px] font-semibold text-white">Upload</Text>
-              </TouchableOpacity>
+                {/* Center: Shutter button */}
+                <TouchableOpacity style={styles.shutterOuter} onPress={takePicture}>
+                  <View style={styles.shutterInner} />
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                className="h-20 w-20 items-center justify-center rounded-full border-4 border-[#34C759] bg-white"
-                onPress={takePicture}>
-                <View className="h-16 w-16 rounded-full bg-[#34C759]" />
-              </TouchableOpacity>
-
-              <View className="h-6 w-6" />
-            </View>
+                {/* Right: Barcode button */}
+                <TouchableOpacity style={styles.smallCircle}>
+                  <ScanBarcode size={26} color="#FFFFFF" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
           </View>
         </CameraView>
       ) : (
-        <View className="flex-1 items-center justify-center bg-black">
-          <Text className="text-white">Camera paused</Text>
+        <View style={styles.centerFill}>
+          <Text style={{ color: 'white' }}>Camera paused</Text>
         </View>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'black' },
+  loadingText: { color: 'white' },
+  permissionIcon: {
+    height: 96,
+    width: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 48,
+    backgroundColor: '#E8F5E9',
+  },
+  permissionTitle: { textAlign: 'center', fontSize: 20, fontWeight: '700', color: '#000' },
+  permissionText: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+    color: '#8E8E93',
+  },
+  permissionButton: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: '#34C759',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  permissionButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  pulseCircle: {
+    height: 200,
+    width: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 100,
+    backgroundColor: '#E8F5E9',
+  },
+  processingText: { fontSize: 16, fontWeight: '500', color: '#8E8E93' },
+
+  topGradient: { position: 'absolute', left: 0, right: 0, top: 0 },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iconButton: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center' },
+  scanIndicator: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  scanIndicatorText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
+  scanArea: { position: 'absolute', overflow: 'hidden', borderRadius: 18 },
+  scanBorder: {
+    position: 'absolute',
+    inset: 0 as any,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  corner: { position: 'absolute', width: 40, height: 40 },
+
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 20,
+    gap: 60,
+  },
+  smallCircle: {
+    height: 56,
+    width: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  shutterOuter: {
+    height: 80,
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: 'white',
+    backgroundColor: 'transparent',
+  },
+  shutterInner: { height: 64, width: 64, borderRadius: 32, backgroundColor: 'white' },
+});
