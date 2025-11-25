@@ -36,6 +36,8 @@ function transformScanResult(apiResult: ScanResult, imageUri: string) {
     },
     timestamp: Date.now(),
     imageUri,
+    mode: apiResult.mode,
+    barcodeData: apiResult.barcodeData,
   };
 }
 
@@ -83,7 +85,7 @@ export default function ScanScreen() {
     pulseAnim.setValue(1);
   };
 
-  const analyzeProduct = async (imageUri: string) => {
+  const analyzeProduct = async (imageUri: string, mode: ScanMode, barcode: string | null = null) => {
     setScanState('processing');
     startPulse();
 
@@ -93,8 +95,8 @@ export default function ScanScreen() {
       // Call mock API via React Query mutation
       const apiResult = await uploadMutation.mutateAsync({
         imageUri,
-        mode: scanMode,
-        barcodeData: scanMode === 'barcode' ? barcodeData : null,
+        mode: mode,
+        barcodeData: mode === 'barcode' ? barcode : null,
       });
 
       // Transform to UI format
@@ -138,7 +140,7 @@ export default function ScanScreen() {
           : photo.base64
             ? `data:image/jpeg;base64,${photo.base64}`
             : photo.uri;
-        await analyzeProduct(base64Image);
+        await analyzeProduct(base64Image, scanMode, barcodeData);
       }
     } catch (error) {
       console.error('Failed to take picture:', error);
@@ -160,7 +162,7 @@ export default function ScanScreen() {
           : asset.base64
             ? `data:image/jpeg;base64,${asset.base64}`
             : asset.uri;
-        await analyzeProduct(base64Image);
+        await analyzeProduct(base64Image, scanMode, barcodeData);
       }
     } catch (error) {
       console.error('Failed to pick image:', error);
@@ -197,7 +199,7 @@ export default function ScanScreen() {
     setShowModeInfo(false);
   };
 
-  const handleBarcodeScanned = (scanningResult: { type: string; data: string }) => {
+  const handleBarcodeScanned = async (scanningResult: { type: string; data: string }) => {
     // Only process if in idle state and not already processing a barcode
     if (scanState !== 'idle' || isProcessingBarcodeRef.current) return;
 
@@ -206,7 +208,7 @@ export default function ScanScreen() {
     // Mark as processing to prevent multiple scans
     isProcessingBarcodeRef.current = true;
 
-    // Automatically switch to barcode mode
+    // Automatically switch to barcode mode (for UI display)
     setScanMode('barcode');
     setBarcodeData(scanningResult.data);
 
@@ -215,9 +217,23 @@ export default function ScanScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    // Trigger scan immediately (no setTimeout to avoid camera unmounting race condition)
+    // Take picture and analyze with the scanned barcode data
     if (cameraRef.current) {
-      takePicture();
+      try {
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, base64: true });
+        if (photo?.uri) {
+          const base64Image = photo.uri.startsWith('data:')
+            ? photo.uri
+            : photo.base64
+              ? `data:image/jpeg;base64,${photo.base64}`
+              : photo.uri;
+          // Pass the scanned barcode data directly, not from state
+          await analyzeProduct(base64Image, 'barcode', scanningResult.data);
+        }
+      } catch (error) {
+        console.error('Failed to take picture:', error);
+        isProcessingBarcodeRef.current = false;
+      }
     }
   };
 
@@ -463,7 +479,13 @@ export default function ScanScreen() {
                   </TouchableOpacity>
 
                   {/* Center: Shutter button */}
-                  <TouchableOpacity style={styles.shutterOuter} onPress={takePicture}>
+                  <TouchableOpacity
+                    style={[
+                      styles.shutterOuter,
+                      scanMode === 'barcode' && { opacity: 0.3 },
+                    ]}
+                    onPress={scanMode === 'barcode' ? undefined : takePicture}
+                    disabled={scanMode === 'barcode'}>
                     <View style={styles.shutterInner} />
                   </TouchableOpacity>
 

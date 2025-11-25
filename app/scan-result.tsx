@@ -24,6 +24,8 @@ interface ScanResultData {
   planetScore: number;
   health: CategoryPoints;
   environment: CategoryPoints;
+  mode: 'general' | 'barcode';
+  barcodeData?: string | null;
 }
 
 export default function ScanResultScreen() {
@@ -53,16 +55,28 @@ export default function ScanResultScreen() {
 
   return (
     <View className="flex-1 bg-[#FAF9F7]">
-      <View
-        className="flex-row items-center justify-between px-5 pb-4"
-        style={{ paddingTop: insets.top + 16 }}>
-        <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
-          <X size={28} color="#000" />
-        </TouchableOpacity>
-        <Text className="flex-1 text-center text-xl font-bold text-black" numberOfLines={1}>
-          {result.productName}
-        </Text>
-        <View className="h-10 w-10" />
+      <View className="px-5 pb-4" style={{ paddingTop: insets.top + 16 }}>
+        <View className="flex-row items-center justify-between">
+          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
+            <X size={28} color="#000" />
+          </TouchableOpacity>
+          <Text className="flex-1 text-center text-xl font-bold text-black" numberOfLines={1}>
+            {result.productName}
+          </Text>
+          <View className="h-10 w-10" />
+        </View>
+        {/* Mode Badge */}
+        <View className="mt-3 items-center">
+          <View className={`rounded-xl px-4 py-1.5 ${result.mode === 'barcode' ? 'bg-[#34C759]' : 'bg-[#8E8E93]'}`}>
+            <Text className="text-[13px] font-semibold text-white">
+              {result.mode === 'barcode' && result.barcodeData
+                ? `Barcode: ${result.barcodeData}`
+                : result.mode === 'barcode'
+                  ? 'Barcode Mode'
+                  : 'General Mode'}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView

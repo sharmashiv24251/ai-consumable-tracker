@@ -20,7 +20,8 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 92, environment: 88 },
     result: {
       scanId: 'history_001',
-      mode: 'general',
+      mode: 'barcode',
+      barcodeData: '7501234567890',
       scores: { health: 92, environment: 88 },
       health: {
         good: [
@@ -29,7 +30,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
           { id: 'h3', text: 'No added sugars' },
         ],
         ok: [{ id: 'h4', text: 'Slightly processed for shelf stability' }],
-        bad: [{ id: 'h5', text: 'No added sugars' }],
+        bad: [],
       },
       environment: {
         good: [
@@ -37,7 +38,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
           { id: 'e2', text: 'Sustainable almond farming practices' },
         ],
         ok: [{ id: 'e3', text: 'Water-intensive crop' }],
-        bad: [{ id: 'e4', text: 'No added sugars' }],
+        bad: [],
       },
     },
   },
@@ -50,6 +51,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     result: {
       scanId: 'history_002',
       mode: 'general',
+      barcodeData: null,
       scores: { health: 78, environment: 72 },
       health: {
         good: [
@@ -74,7 +76,8 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 85, environment: 65 },
     result: {
       scanId: 'history_003',
-      mode: 'general',
+      mode: 'barcode',
+      barcodeData: '0987654321098',
       scores: { health: 85, environment: 65 },
       health: {
         good: [
@@ -101,6 +104,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     result: {
       scanId: 'history_004',
       mode: 'general',
+      barcodeData: null,
       scores: { health: 88, environment: 82 },
       health: {
         good: [
@@ -129,7 +133,8 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     scores: { health: 82, environment: 70 },
     result: {
       scanId: 'history_005',
-      mode: 'general',
+      mode: 'barcode',
+      barcodeData: '6543210987654',
       scores: { health: 82, environment: 70 },
       health: {
         good: [
@@ -156,6 +161,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     result: {
       scanId: 'history_006',
       mode: 'general',
+      barcodeData: null,
       scores: { health: 75, environment: 68 },
       health: {
         good: [
@@ -181,6 +187,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     result: {
       scanId: 'history_007',
       mode: 'general',
+      barcodeData: null,
       scores: { health: 95, environment: 85 },
       health: {
         good: [
@@ -212,6 +219,7 @@ const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
     result: {
       scanId: 'history_008',
       mode: 'general',
+      barcodeData: null,
       scores: { health: 83, environment: 75 },
       health: {
         good: [

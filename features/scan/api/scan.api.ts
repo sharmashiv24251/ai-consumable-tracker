@@ -11,13 +11,11 @@ import {
 import type { ScanResult, ScanUploadPayload } from '../types';
 
 /**
- * Mock scan responses
- * These represent different types of products
+ * Mock scan responses for GENERAL mode
+ * These represent AI-analyzed product images
  */
-const MOCK_SCAN_RESPONSES: ScanResult[] = [
+const MOCK_GENERAL_RESPONSES: Omit<ScanResult, 'scanId' | 'mode' | 'barcodeData'>[] = [
   {
-    scanId: 'scan_001',
-    mode: 'general',
     scores: {
       health: 85,
       environment: 72,
@@ -50,35 +48,6 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
     },
   },
   {
-    scanId: 'scan_002',
-    mode: 'general',
-    scores: {
-      health: 92,
-      environment: 88,
-    },
-    health: {
-      good: [
-        { id: 'h_g_1', text: 'Organic certified ingredients' },
-        { id: 'h_g_2', text: 'High in antioxidants and fiber' },
-        { id: 'h_g_3', text: 'No added sugars or artificial sweeteners' },
-        { id: 'h_g_4', text: 'Gluten-free and allergen-friendly' },
-      ],
-      ok: [{ id: 'h_o_1', text: 'Higher price point than conventional alternatives' }],
-      bad: [],
-    },
-    environment: {
-      good: [
-        { id: 'e_g_1', text: 'Fully compostable packaging' },
-        { id: 'e_g_2', text: 'Carbon-neutral production process' },
-        { id: 'e_g_3', text: 'Fair trade certified supply chain' },
-      ],
-      ok: [{ id: 'e_o_1', text: 'Imported from distant region' }],
-      bad: [],
-    },
-  },
-  {
-    scanId: 'scan_003',
-    mode: 'general',
     scores: {
       health: 65,
       environment: 58,
@@ -111,26 +80,86 @@ const MOCK_SCAN_RESPONSES: ScanResult[] = [
 ];
 
 /**
+ * Mock scan responses for BARCODE mode
+ * These represent barcode database lookups
+ */
+const MOCK_BARCODE_RESPONSES: Omit<ScanResult, 'scanId' | 'mode' | 'barcodeData'>[] = [
+  {
+    scores: {
+      health: 92,
+      environment: 88,
+    },
+    health: {
+      good: [
+        { id: 'h_g_1', text: 'Organic certified ingredients' },
+        { id: 'h_g_2', text: 'High in antioxidants and fiber' },
+        { id: 'h_g_3', text: 'No added sugars or artificial sweeteners' },
+        { id: 'h_g_4', text: 'Gluten-free and allergen-friendly' },
+      ],
+      ok: [{ id: 'h_o_1', text: 'Higher price point than conventional alternatives' }],
+      bad: [],
+    },
+    environment: {
+      good: [
+        { id: 'e_g_1', text: 'Fully compostable packaging' },
+        { id: 'e_g_2', text: 'Carbon-neutral production process' },
+        { id: 'e_g_3', text: 'Fair trade certified supply chain' },
+      ],
+      ok: [{ id: 'e_o_1', text: 'Imported from distant region' }],
+      bad: [],
+    },
+  },
+  {
+    scores: {
+      health: 70,
+      environment: 65,
+    },
+    health: {
+      good: [
+        { id: 'h_g_1', text: 'Contains whole grains' },
+        { id: 'h_g_2', text: 'Good source of fiber' },
+      ],
+      ok: [
+        { id: 'h_o_1', text: 'Moderate sugar content' },
+        { id: 'h_o_2', text: 'Contains some preservatives' },
+      ],
+      bad: [{ id: 'h_b_1', text: 'High sodium levels' }],
+    },
+    environment: {
+      good: [{ id: 'e_g_1', text: 'Recyclable cardboard box' }],
+      ok: [
+        { id: 'e_o_1', text: 'Standard manufacturing process' },
+        { id: 'e_o_2', text: 'Regional distribution' },
+      ],
+      bad: [{ id: 'e_b_1', text: 'Plastic inner bag not recyclable' }],
+    },
+  },
+];
+
+/**
  * Upload scan image and get analysis
  * In real implementation, this would be POST /api/scan/upload
  * @param payload - Image data and optional product name
  */
 export async function uploadScan(payload: ScanUploadPayload): Promise<ScanResult> {
+  const mode = payload.mode || 'general';
+  const barcodeData = payload.barcodeData || null;
+
   console.log('[Scan API] Uploading image for analysis...', {
-    mode: payload.mode || 'general',
-    barcodeData: payload.barcodeData || null,
+    mode,
+    barcodeData,
   });
 
-  // Randomly select a mock response
-  const mockResponse =
-    MOCK_SCAN_RESPONSES[Math.floor(Math.random() * MOCK_SCAN_RESPONSES.length)];
+  // Select mock response based on mode
+  const mockResponses = mode === 'barcode' ? MOCK_BARCODE_RESPONSES : MOCK_GENERAL_RESPONSES;
+  const mockResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
 
-  // Generate unique scan ID and use mode from payload
+  // Generate unique scan ID and use real mode and barcode data from payload
   const scanResult: ScanResult = {
     ...mockResponse,
     scanId: `scan_${Date.now()}`,
-    mode: payload.mode || 'general', // Use mode from payload, default to 'general'
-    barcodeData: payload.barcodeData || null, // Include barcode data if provided
+    mode, // Use actual mode from frontend
+    barcodeData, // Use actual barcode data from frontend (if barcode mode)
   };
 
   // Simulate network + processing delay

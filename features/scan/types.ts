@@ -61,6 +61,8 @@ export interface LocalScanResult {
   environment: CategoryPoints;
   timestamp: number;
   imageUri?: string;
+  mode: 'general' | 'barcode';
+  barcodeData?: string | null;
 }
 
 /**
