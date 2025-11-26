@@ -5,7 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 import { Camera, Zap, ZapOff, X, Image as ImageIcon, ScanBarcode, Info } from 'lucide-react-native';
 import React, { useState, useRef, useEffect } from 'react';
-import { Text, View, TouchableOpacity, Animated, Platform, StyleSheet, Modal } from 'react-native';
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  Animated,
+  Platform,
+  StyleSheet,
+  Modal,
+  Image,
+  Dimensions,
+} from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,9 +63,21 @@ export default function ScanScreen() {
   const [barcodeData, setBarcodeData] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0);
   const cameraRef = useRef<CameraView>(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scanBarAnim = useRef(new Animated.Value(0)).current;
   const isProcessingBarcodeRef = useRef(false); // Prevent multiple barcode scans
   const { addScanResult, updateScores } = useApp();
+  const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+  const [processingImageUri, setProcessingImageUri] = useState<string | null>(null);
+
+  const loadingTexts = [
+    'analyzing image',
+    'calculating impact',
+    'judging your compatibility',
+    'checking ingredients',
+    'evaluating sustainability',
+    'processing results',
+  ];
 
   // React Query mutation hook
   const uploadMutation = useUploadScan();
@@ -64,30 +86,70 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!isFocused) {
       if (scanState === 'processing') {
-        stopPulse();
         setScanState('idle');
+        setProcessingImageUri(null);
       }
       isProcessingBarcodeRef.current = false; // Reset barcode processing flag
     }
   }, [isFocused, scanState]);
 
-  const startPulse = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      ])
-    ).start();
-  };
+  // Scanning bar animation
+  useEffect(() => {
+    if (scanState === 'processing') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanBarAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanBarAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      scanBarAnim.setValue(0);
+    }
+  }, [scanState, scanBarAnim]);
 
-  const stopPulse = () => {
-    pulseAnim.stopAnimation();
-    pulseAnim.setValue(1);
-  };
+  // Cycle through loading texts with fade animation
+  useEffect(() => {
+    if (scanState === 'processing') {
+      const interval = setInterval(() => {
+        // Fade out
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // Change text
+          setLoadingTextIndex((prev) => (prev + 1) % loadingTexts.length);
+          // Fade in
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        });
+      }, 2000); // Change text every 2 seconds
 
-  const analyzeProduct = async (imageUri: string, mode: ScanMode, barcode: string | null = null) => {
+      return () => clearInterval(interval);
+    } else {
+      setLoadingTextIndex(0); // Reset when not processing
+      fadeAnim.setValue(1); // Reset fade
+    }
+  }, [scanState, loadingTexts.length, fadeAnim]);
+
+  const analyzeProduct = async (
+    imageUri: string,
+    mode: ScanMode,
+    barcode: string | null = null
+  ) => {
     setScanState('processing');
-    startPulse();
+    setProcessingImageUri(imageUri);
 
     if (Platform.OS !== 'web') await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -111,6 +173,7 @@ export default function ScanScreen() {
 
       // Navigate to result screen
       setScanState('idle');
+      setProcessingImageUri(null);
       setBarcodeData(null); // Clear barcode data after scan
       isProcessingBarcodeRef.current = false; // Reset barcode processing flag
       router.push({
@@ -122,11 +185,10 @@ export default function ScanScreen() {
     } catch (error) {
       console.error('Analysis failed:', error);
       setScanState('idle');
+      setProcessingImageUri(null);
       isProcessingBarcodeRef.current = false; // Reset barcode processing flag
       if (Platform.OS !== 'web')
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      stopPulse();
     }
   };
 
@@ -277,15 +339,53 @@ export default function ScanScreen() {
   }
 
   if (scanState === 'processing') {
+    const imageWidth = Math.min(Dimensions.get('window').width - 80, 320);
+    const imageHeight = (imageWidth / 3) * 4;
+    const scanBarPosition = scanBarAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, imageHeight - 4],
+    });
+
     return (
-      <View style={[styles.centerFill, { gap: 16, backgroundColor: '#FAF9F7' }]}>
+      <View style={[styles.centerFill, { backgroundColor: '#FAF9F7', gap: 24 }]}>
         <StatusBar style="dark" />
-        <Animated.View style={{ marginBottom: 20, transform: [{ scale: pulseAnim }] }}>
-          <View style={styles.pulseCircle}>
-            <Text style={{ fontSize: 100 }}>🔍</Text>
-          </View>
+
+        {/* Image with scanning bar */}
+        <View style={{ position: 'relative' }}>
+          {processingImageUri && (
+            <Image
+              source={{ uri: processingImageUri }}
+              style={{
+                width: imageWidth,
+                height: imageHeight,
+                borderRadius: 24,
+              }}
+              resizeMode="cover"
+            />
+          )}
+
+          {/* Scanning bar overlay */}
+          <Animated.View
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              height: 4,
+              backgroundColor: '#34C759',
+              opacity: 0.8,
+              shadowColor: '#34C759',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.8,
+              shadowRadius: 10,
+              transform: [{ translateY: scanBarPosition }],
+            }}
+          />
+        </View>
+
+        {/* Fading text below image */}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <Text style={styles.processingText}>{loadingTexts[loadingTextIndex]}</Text>
         </Animated.View>
-        <Text style={styles.processingText}>analyzing packaging</Text>
       </View>
     );
   }
@@ -480,10 +580,7 @@ export default function ScanScreen() {
 
                   {/* Center: Shutter button */}
                   <TouchableOpacity
-                    style={[
-                      styles.shutterOuter,
-                      scanMode === 'barcode' && { opacity: 0.3 },
-                    ]}
+                    style={[styles.shutterOuter, scanMode === 'barcode' && { opacity: 0.3 }]}
                     onPress={scanMode === 'barcode' ? undefined : takePicture}
                     disabled={scanMode === 'barcode'}>
                     <View style={styles.shutterInner} />
@@ -591,7 +688,13 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     backgroundColor: '#E8F5E9',
   },
-  processingText: { fontSize: 16, fontWeight: '500', color: '#8E8E93' },
+  processingText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#3C3C43',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
 
   topGradient: { position: 'absolute', left: 0, right: 0, top: 0 },
   topRow: {
