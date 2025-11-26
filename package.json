@@ -9,7 +9,7 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web",
-    "vercel-build": "expo export"
+    "vercel-build": "expo export --platform web"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.26",
