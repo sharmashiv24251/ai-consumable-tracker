@@ -47,4 +47,11 @@ export const queryKeys = {
     user: () => [...queryKeys.auth.all, 'user'] as const,
     session: () => [...queryKeys.auth.all, 'session'] as const,
   },
+
+  // Articles feature keys
+  articles: {
+    all: ['articles'] as const,
+    list: () => [...queryKeys.articles.all, 'list'] as const,
+    detail: (articleId: string) => [...queryKeys.articles.all, 'detail', articleId] as const,
+  },
 };

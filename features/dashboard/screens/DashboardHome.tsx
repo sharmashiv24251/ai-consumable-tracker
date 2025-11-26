@@ -6,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScoreCardsRow } from '../../../common/components';
 import { useDashboardData } from '../hooks/useDashboardData';
 import TrendsChart from '../components/TrendsChart';
+import { useArticles, ArticleCard } from '../../articles';
 
 export default function DashboardHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { scanHistory } = useApp();
   const { data: dashboardData } = useDashboardData();
+  const { data: articles } = useArticles();
 
   const hasData = scanHistory.length > 0;
 
@@ -52,6 +54,14 @@ export default function DashboardHome() {
           <>
             <ScoreCardsRow environmentScore={environmentScore} healthScore={healthScore} />
             <TrendsChart />
+
+            {/* Articles Section */}
+            {articles && articles.length > 0 && (
+              <View className="px-6" style={{ gap: 16 }}>
+                {articles[0] && <ArticleCard article={articles[0]} />}
+                {articles[1] && <ArticleCard article={articles[1]} />}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
